@@ -61,7 +61,7 @@ function Dashboard({ user }) {
   const [newItemText, setNewItemText] = useState('');
   
   const [sources, setSources] = useState(['워크인', '박람회', '루어', '지인소개', '크라우드', '기타']);
-  const [reasons, setReasons] = useState(['가격 문제', '비교 방문', '고객 변심', '의견 불일치', '기타']);
+  const [reasons, setReasons] = useState(['가격 문제', '비교 방문', '고객 변심', '의견 불일치', '기타', '노쇼']);
 
   const branches = ['신사', '광교', '구월', '노원', '대전', '부산', '성수', '수원', '압구정', '인천', '잠실'];
   const branchColors = {
@@ -71,7 +71,7 @@ function Dashboard({ user }) {
   };
   const reasonColors = {
     '가격 문제': '#EF4444', '비교 방문': '#F97316', '고객 변심': '#F59E0B', 
-    '의견 불일치': '#6366F1', '기타': '#6B7280',
+    '의견 불일치': '#6366F1', '기타': '#6B7280', '노쇼': '#A855F7',
   };
 
   useEffect(() => {
@@ -88,7 +88,13 @@ function Dashboard({ user }) {
         if (doc.exists() && doc.data().items) setSources(doc.data().items);
     });
     const unsubReasons = onSnapshot(doc(db, settingsCollectionPath, 'reasons'), (doc) => {
-        if (doc.exists() && doc.data().items) setReasons(doc.data().items);
+        if (doc.exists() && doc.data().items) {
+            const fetchedReasons = doc.data().items;
+            if (!fetchedReasons.includes('노쇼')) {
+                fetchedReasons.push('노쇼');
+            }
+            setReasons(fetchedReasons);
+        }
     });
 
     return () => {
@@ -158,6 +164,7 @@ function Dashboard({ user }) {
   };
 
   const handleDeleteItemFromList = (itemToDelete) => {
+      if (itemToDelete === '노쇼') return; // Prevent deleting '노쇼'
       const updatedItems = editingList.items.filter(item => item !== itemToDelete);
       setEditingList(prev => ({...prev, items: updatedItems}));
       handleUpdateList(editingList.name, updatedItems);
@@ -336,34 +343,45 @@ function Dashboard({ user }) {
   
   const dashboardData = useMemo(() => {
     const now = new Date();
+    
+    const allUnclosedRecords = records.filter(r => r.status !== 'recontracted');
+    const activeUnclosed = allUnclosedRecords.filter(r => r.reason !== '노쇼');
+
     const data = {
         monthlyData: {},
-        allTimeSources: {},
-        allTimeReasons: {},
         salespersonBranchMap: {}
     };
-    const activeUnclosed = records.filter(r => r.status !== 'recontracted');
 
     activeUnclosed.forEach(r => {
         const d = r.date?.toDate();
         if (!d) return;
         const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         data.monthlyData[mKey] = { total: (data.monthlyData[mKey]?.total || 0) + 1 };
-        data.allTimeSources[r.source] = (data.allTimeSources[r.source] || 0) + 1;
-        data.allTimeReasons[r.reason] = (data.allTimeReasons[r.reason] || 0) + 1;
         if(r.salesperson && r.branch) data.salespersonBranchMap[r.salesperson] = r.branch;
     });
 
-    const statsMonthRecords = activeUnclosed.filter(r => {
+    const statsMonthRecords = allUnclosedRecords.filter(r => {
         const d = r.date?.toDate();
         return d && d.getFullYear() === statsMonth.getFullYear() && d.getMonth() === statsMonth.getMonth();
     });
 
     const monthlySalespersons = {};
     const monthlyBranches = {};
+    const monthlySources = {};
+    const monthlyReasons = {};
+    const monthlyNoShowsByBranch = {};
+
     statsMonthRecords.forEach(r => {
-        monthlySalespersons[r.salesperson] = (monthlySalespersons[r.salesperson] || 0) + 1;
-        monthlyBranches[r.branch] = (monthlyBranches[r.branch] || 0) + 1;
+        if (r.reason !== '노쇼') {
+            monthlySalespersons[r.salesperson] = (monthlySalespersons[r.salesperson] || 0) + 1;
+            monthlyBranches[r.branch] = (monthlyBranches[r.branch] || 0) + 1;
+            monthlySources[r.source] = (monthlySources[r.source] || 0) + 1;
+            monthlyReasons[r.reason] = (monthlyReasons[r.reason] || 0) + 1;
+        }
+
+        if (r.reason === '노쇼') {
+            monthlyNoShowsByBranch[r.branch] = (monthlyNoShowsByBranch[r.branch] || 0) + 1;
+        }
     });
 
     const currentMonthRecordsCount = activeUnclosed.filter(r => {
@@ -382,6 +400,9 @@ function Dashboard({ user }) {
       ...data,
       monthlySalespersons,
       monthlyBranches,
+      monthlySources,
+      monthlyReasons,
+      monthlyNoShowsByBranch,
       totalRecordsCurrentMonth: currentMonthRecordsCount,
       totalRecordsLastMonth: lastMonthRecordsCount,
     };
@@ -558,17 +579,21 @@ function Dashboard({ user }) {
             </div>
             <div className="bg-white p-6 rounded-2xl shadow-lg">
               <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-700">고객 출처별 비중</h2>
+                  <h2 className="text-xl font-semibold text-gray-700">고객 출처별 비중 (월별)</h2>
                   <button onClick={() => openSettingsModal('sources', '고객 출처', sources)} className="p-1 text-gray-400 hover:text-gray-600"><Settings className="w-5 h-5"/></button>
               </div>
-              {renderChart(dashboardData.allTimeSources, PieChart)}
+              {renderChart(dashboardData.monthlySources, PieChart)}
             </div>
             <div className="bg-white p-6 rounded-2xl shadow-lg">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-700">미계약 사유별 비중</h2>
+                <h2 className="text-xl font-semibold text-gray-700">미계약 사유별 비중 (월별)</h2>
                 <button onClick={() => openSettingsModal('reasons', '미계약 사유', reasons)} className="p-1 text-gray-400 hover:text-gray-600"><Settings className="w-5 h-5"/></button>
               </div>
-              {renderChart(dashboardData.allTimeReasons, TopNChartReasons)}
+              {renderChart(dashboardData.monthlyReasons, TopNChartReasons)}
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-lg sm:col-span-2">
+                <h2 className="text-xl font-semibold mb-4 text-gray-700">지점별 노쇼 (월별)</h2>
+                {renderChart(dashboardData.monthlyNoShowsByBranch, (props) => <TopNChart {...props} />)}
             </div>
           </div>
 
@@ -593,7 +618,7 @@ function Dashboard({ user }) {
               <div className="relative w-full sm:w-auto">
                    <select value={reasonFilter} onChange={(e) => setReasonFilter(e.target.value)} className="w-full sm:w-40 appearance-none p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500">
                       <option value="all">모든 사유</option>
-                      {reasons.map(r => <option key={r} value={r}>{r}</option>)}
+                      {reasons.map(r => <option key={r} value={r}>{r === '노쇼' ? '노쇼 (카운팅X)' : r}</option>)}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
               </div>
@@ -611,9 +636,10 @@ function Dashboard({ user }) {
             records={allUnclosedRecords} 
             currentPage={unclosedPage} 
             setCurrentPage={setUnclosedPage} 
-            columns={['리컨택 처리', '지점', '담당자', '고객', '사유', '내용', '액션']} 
+            columns={['상담일', '리컨택 처리', '지점', '담당자', '고객', '사유', '내용', '액션']} 
             renderRow={r => (
               <tr key={r.id}>
+                <td className="px-3 py-4 text-sm whitespace-nowrap">{r.date?.toDate().toLocaleDateString('ko-KR')}</td>
                 <td className="px-3 py-4"><button onClick={() => toggleRecontact(r.id, r.recontacted)} className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300 font-semibold">완료 처리</button></td>
                 <td className="px-3 py-4 text-sm">{r.branch}</td><td className="px-3 py-4 text-sm">{r.salesperson}</td>
                 <td className="px-3 py-4 text-sm"><button onClick={() => r.customerContact && window.open(`tel:${r.customerContact}`)} className={`flex items-center hover:text-blue-600 ${!r.customerContact && 'cursor-default'}`} disabled={!r.customerContact}>{r.customerName}{r.customerContact && <Phone className="w-4 h-4 ml-1" />}</button></td>
@@ -628,9 +654,10 @@ function Dashboard({ user }) {
             records={recontactedOnlyRecords} 
             currentPage={recontactedPage} 
             setCurrentPage={setRecontactedPage} 
-            columns={['완료 취소', '지점', '담당자', '고객', '사유', '내용', '액션']} 
+            columns={['상담일', '완료 취소', '지점', '담당자', '고객', '사유', '내용', '액션']} 
             renderRow={r => (
               <tr key={r.id} className="bg-orange-50">
+                <td className="px-3 py-4 text-sm whitespace-nowrap">{r.date?.toDate().toLocaleDateString('ko-KR')}</td>
                 <td className="px-3 py-4"><button onClick={() => toggleRecontact(r.id, r.recontacted)} className="px-2 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600 font-semibold">처리 취소</button></td>
                 <td className="px-3 py-4 text-sm">{r.branch}</td><td className="px-3 py-4 text-sm">{r.salesperson}</td>
                 <td className="px-3 py-4 text-sm"><button onClick={() => r.customerContact && window.open(`tel:${r.customerContact}`)} className={`flex items-center hover:text-blue-600 ${!r.customerContact && 'cursor-default'}`} disabled={!r.customerContact}>{r.customerName}{r.customerContact && <Phone className="w-4 h-4 ml-1" />}</button></td>
@@ -640,7 +667,7 @@ function Dashboard({ user }) {
               </tr>
             )}
           />
-          <PaginatedTable title="재계약 완료 기록" records={recontractedCompletedRecords} currentPage={recontractedCompletedPage} setCurrentPage={setRecontractedCompletedPage} columns={['지점', '담당자 (재계약자)', '고객', '최초 사유', '내용', '액션']} renderRow={r => { const { recontractor } = parseRecontractInfo(r); return <tr key={r.id} className="bg-green-50 hover:bg-green-100"><td className="px-3 py-4 text-sm">{r.branch}</td><td className="px-3 py-4 text-sm">{r.salesperson} ({recontractor})</td><td className="px-3 py-4 text-sm"><button onClick={() => r.customerContact && window.open(`tel:${r.customerContact}`)} className={`flex items-center hover:text-blue-600 ${!r.customerContact && 'cursor-default'}`} disabled={!r.customerContact}>{r.customerName}{r.customerContact && <Phone className="w-4 h-4 ml-1" />}</button></td><td className="px-3 py-4 text-sm">{r.reason}</td><td className="px-3 py-4 text-sm"><button onClick={() => openCommentModal(r)} className="inline-flex items-center text-blue-600 hover:text-blue-900 font-semibold"><MessageSquare className="w-4 h-4 mr-1"/>내용 ({getCommentCount(r)})</button></td><td className="px-3 py-4 text-sm"><button onClick={() => openRevertConfirmModal(r)} className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 flex items-center"><Undo2 className="w-3 h-3 mr-1"/>미계약으로</button></td></tr>}} />
+          <PaginatedTable title="재계약 완료 기록" records={recontractedCompletedRecords} currentPage={recontractedCompletedPage} setCurrentPage={setRecontractedCompletedPage} columns={['상담일', '지점', '담당자 (재계약자)', '고객', '최초 사유', '내용', '액션']} renderRow={r => { const { recontractor } = parseRecontractInfo(r); return <tr key={r.id} className="bg-green-50 hover:bg-green-100"><td className="px-3 py-4 text-sm whitespace-nowrap">{r.date?.toDate().toLocaleDateString('ko-KR')}</td><td className="px-3 py-4 text-sm">{r.branch}</td><td className="px-3 py-4 text-sm">{r.salesperson} ({recontractor})</td><td className="px-3 py-4 text-sm"><button onClick={() => r.customerContact && window.open(`tel:${r.customerContact}`)} className={`flex items-center hover:text-blue-600 ${!r.customerContact && 'cursor-default'}`} disabled={!r.customerContact}>{r.customerName}{r.customerContact && <Phone className="w-4 h-4 ml-1" />}</button></td><td className="px-3 py-4 text-sm">{r.reason}</td><td className="px-3 py-4 text-sm"><button onClick={() => openCommentModal(r)} className="inline-flex items-center text-blue-600 hover:text-blue-900 font-semibold"><MessageSquare className="w-4 h-4 mr-1"/>내용 ({getCommentCount(r)})</button></td><td className="px-3 py-4 text-sm"><button onClick={() => openRevertConfirmModal(r)} className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 flex items-center"><Undo2 className="w-3 h-3 mr-1"/>미계약으로</button></td></tr>}} />
         
           <div ref={formRef} className="bg-gray-800 p-6 rounded-2xl shadow-lg">
             <h2 className="text-2xl font-bold mb-6 text-white">새 미계약 건 기록</h2>
@@ -650,7 +677,7 @@ function Dashboard({ user }) {
               <div><label className="block text-sm font-medium text-gray-300">고객 이름</label><input type="text" name="customerName" value={newRecordForm.customerName} onFocus={handleInputFocus} onChange={handleFormChange} className="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-red-500 focus:border-red-500" required /></div>
               <div><label className="block text-sm font-medium text-gray-300">고객 연락처</label><input type="tel" name="customerContact" value={newRecordForm.customerContact} onFocus={handleInputFocus} onChange={handleFormChange} className="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-red-500 focus:border-red-500" /></div>
               <div><label className="block text-sm font-medium text-gray-300">고객 출처</label><select name="source" value={newRecordForm.source} onChange={handleFormChange} className="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-red-500 focus:border-red-500">{sources.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-              <div><label className="block text-sm font-medium text-gray-300">미계약 사유</label><select name="reason" value={newRecordForm.reason} onChange={handleFormChange} className="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-red-500 focus:border-red-500">{reasons.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-300">미계약 사유</label><select name="reason" value={newRecordForm.reason} onChange={handleFormChange} className="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-red-500 focus:border-red-500">{reasons.map(r => <option key={r} value={r}>{r === '노쇼' ? '노쇼 (카운팅X)' : r}</option>)}</select></div>
               <div><label className="block text-sm font-medium text-gray-300">예약 날짜</label><input type="date" name="reservationDate" value={newRecordForm.reservationDate} onChange={handleFormChange} className="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-red-500 focus:border-red-500" /></div>
               <div><label className="block text-sm font-medium text-gray-300">예약 시간</label><input type="time" name="reservationTime" value={newRecordForm.reservationTime} onChange={handleFormChange} className="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-red-500 focus:border-red-500" /></div>
               <div><label className="block text-sm font-medium text-gray-300">상담 시간</label><input type="text" name="consultationTime" value={newRecordForm.consultationTime} onFocus={handleInputFocus} onChange={handleFormChange} className="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 text-white rounded-md focus:ring-red-500 focus:border-red-500" /></div>
@@ -682,11 +709,16 @@ function Dashboard({ user }) {
                     </div>
                     <div className="space-y-2">
                         {editingList.items.map(item => (
-                            <div key={item} className="flex justify-between items-center p-2 bg-gray-100 rounded-md">
-                                <span>{item}</span>
-                                <button onClick={() => handleDeleteItemFromList(item)}><Trash2 className="w-5 h-5 text-red-500 hover:text-red-700" /></button>
+                            <div key={item} className={`flex justify-between items-center p-2 rounded-md ${item === '노쇼' ? 'bg-gray-200' : 'bg-gray-100'}`}>
+                                <span>
+                                    {item}
+                                    {item === '노쇼' && <span className="text-xs text-gray-500 ml-2">(미계약 개수에 카운팅되지 않습니다.)</span>}
+                                </span>
+                                {item !== '노쇼' && (
+                                    <button onClick={() => handleDeleteItemFromList(item)}><Trash2 className="w-5 h-5 text-red-500 hover:text-red-700" /></button>
+                                )}
                             </div>
-                        ))}
+                        ))}}
                     </div>
                 </div>
             </div>
