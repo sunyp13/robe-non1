@@ -1,0 +1,180 @@
+[debug] [2025-09-27T06:52:22.509Z] ----------------------------------------------------------------------
+[debug] [2025-09-27T06:52:22.514Z] Command:       /usr/local/bin/node /usr/local/bin/firebase deploy
+[debug] [2025-09-27T06:52:22.515Z] CLI Version:   14.15.2
+[debug] [2025-09-27T06:52:22.515Z] Platform:      darwin
+[debug] [2025-09-27T06:52:22.515Z] Node Version:  v22.19.0
+[debug] [2025-09-27T06:52:22.516Z] Time:          Sat Sep 27 2025 15:52:22 GMT+0900 (Korean Standard Time)
+[debug] [2025-09-27T06:52:22.516Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-09-27T06:52:22.518Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2025-09-27T06:52:22.947Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-09-27T06:52:22.948Z] > authorizing via signed-in user (robeinss0077@gmail.com)
+[debug] [2025-09-27T06:52:22.949Z] [iam] checking project robe-non1 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2025-09-27T06:52:22.951Z] Checked if tokens are valid: false, expires at: 1757590231553
+[debug] [2025-09-27T06:52:22.951Z] Checked if tokens are valid: false, expires at: 1757590231553
+[debug] [2025-09-27T06:52:22.951Z] > refreshing access token with scopes: []
+[debug] [2025-09-27T06:52:22.953Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-09-27T06:52:22.953Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-09-27T06:52:24.620Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2025-09-27T06:52:24.620Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2025-09-27T06:52:24.652Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-09-27T06:52:24.652Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-09-27T06:52:24.676Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/robe-non1:testIamPermissions [none]
+[debug] [2025-09-27T06:52:24.676Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/robe-non1:testIamPermissions x-goog-quota-user=projects/robe-non1
+[debug] [2025-09-27T06:52:24.676Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/robe-non1:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2025-09-27T06:52:25.026Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/robe-non1:testIamPermissions 200
+[debug] [2025-09-27T06:52:25.027Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/robe-non1:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2025-09-27T06:52:25.027Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:25.028Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:25.028Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/robe-non1 [none]
+[debug] [2025-09-27T06:52:25.794Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/robe-non1 200
+[debug] [2025-09-27T06:52:25.794Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/robe-non1 {"projectId":"robe-non1","projectNumber":"491977372291","displayName":"robe-non1","name":"projects/robe-non1","resources":{"hostingSite":"robe-non1"},"state":"ACTIVE","etag":"1_21b15eea-025c-4f22-aaa1-fddc7390d060"}
+[info] 
+[info] === Deploying to 'robe-non1'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2025-09-27T06:52:25.800Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:25.800Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:25.800Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/robe-non1/versions [none]
+[debug] [2025-09-27T06:52:25.800Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/robe-non1/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2025-09-27T06:52:27.367Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/robe-non1/versions 200
+[debug] [2025-09-27T06:52:27.367Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/robe-non1/versions {"name":"projects/491977372291/sites/robe-non1/versions/bd308b0734b14fba","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[robe-non1]: beginning deploy... 
+[info] i  hosting[robe-non1]: found 14 files in build 
+[debug] [2025-09-27T06:52:27.385Z] [hosting] uploading with 200 concurrency
+[debug] [2025-09-27T06:52:27.707Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:27.707Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:27.708Z] [hosting] hash cache [YnVpbGQ] stored for 14 files
+[debug] [2025-09-27T06:52:27.709Z] [hosting][hash queue][FINAL] {"max":318,"min":9,"avg":33.714285714285715,"active":0,"complete":14,"success":14,"errored":0,"retried":0,"total":14,"elapsed":323}
+[debug] [2025-09-27T06:52:27.709Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/491977372291/sites/robe-non1/versions/bd308b0734b14fba:populateFiles [none]
+[debug] [2025-09-27T06:52:27.709Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/491977372291/sites/robe-non1/versions/bd308b0734b14fba:populateFiles {"files":{"/robots.txt":"391d14b3c2f8c9143a27a28c7399585142228d4d1bdbe2c87ac946de411fa9a2","/manifest.json":"4e1d3adad9ce7e17c0d13fac197f1c27091906f4ecf3909c9f51247bff345118","/index.html":"3240836818094fc91d975460af490976fe337aa19faeb969f6608418184c3baf","/logo192.png":"f66564670b5bfe49f3f04a5b63107bae60f4a7736f1d3b83aa0115f7acf45150","/favicon.ico":"1463be9bedc82e16f9364eec7a1f5152cbe56229401381eed65c1496cb884407","/asset-manifest.json":"b5d300cb9d3f2ed365013f18703452d8009dd2cb314a187d1fb98fec7b6859cc","/logo512.png":"2356e0b814e58a349935c8de17226873d615d088a867d591fef48a64c80c9a2f","/static/js/main.068a9534.js.LICENSE.txt":"278439cdcba07849829c22a1c3fc6affa6840aac6934fc2944fb715b924a6bfa","/static/js/453.14fbd4fb.chunk.js":"c5bb618387fc33e439c3196eab8af277fcca36fd16bfd5e526a396eb33218c7e","/static/css/main.d7422331.css.map":"91f0170f0076a6fe411652e9e476fc2e325a3d952638ffc6954c76e846d8f2a9","/static/js/453.14fbd4fb.chunk.js.map":"429e087eb68fdd1baed4a07b2bb8a923a9f2f12765ffdb33eef9a1e2911a5997","/static/css/main.d7422331.css":"8ad55535bee7fd9badf1a07f086bbb2a77dbd118e570ebda898348df28579b4f","/static/js/main.068a9534.js":"bf41fcb3d250259b707cbd7ea6e9c6219511e1097d85911f9f5f4cbb662dd607","/static/js/main.068a9534.js.map":"a6034dbcb793aedf1c6aecb5f2b86ec5cac891f7baedfb0957e698bf4e49ab31"}}
+[debug] [2025-09-27T06:52:28.187Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/491977372291/sites/robe-non1/versions/bd308b0734b14fba:populateFiles 200
+[debug] [2025-09-27T06:52:28.187Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/491977372291/sites/robe-non1/versions/bd308b0734b14fba:populateFiles {"uploadRequiredHashes":["429e087eb68fdd1baed4a07b2bb8a923a9f2f12765ffdb33eef9a1e2911a5997","bf41fcb3d250259b707cbd7ea6e9c6219511e1097d85911f9f5f4cbb662dd607","c5bb618387fc33e439c3196eab8af277fcca36fd16bfd5e526a396eb33218c7e","f66564670b5bfe49f3f04a5b63107bae60f4a7736f1d3b83aa0115f7acf45150","1463be9bedc82e16f9364eec7a1f5152cbe56229401381eed65c1496cb884407","2356e0b814e58a349935c8de17226873d615d088a867d591fef48a64c80c9a2f","278439cdcba07849829c22a1c3fc6affa6840aac6934fc2944fb715b924a6bfa","91f0170f0076a6fe411652e9e476fc2e325a3d952638ffc6954c76e846d8f2a9","8ad55535bee7fd9badf1a07f086bbb2a77dbd118e570ebda898348df28579b4f","4e1d3adad9ce7e17c0d13fac197f1c27091906f4ecf3909c9f51247bff345118","3240836818094fc91d975460af490976fe337aa19faeb969f6608418184c3baf","b5d300cb9d3f2ed365013f18703452d8009dd2cb314a187d1fb98fec7b6859cc","a6034dbcb793aedf1c6aecb5f2b86ec5cac891f7baedfb0957e698bf4e49ab31"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files"}
+[debug] [2025-09-27T06:52:28.188Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.189Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.189Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.189Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.189Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.189Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.189Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.190Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.190Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.190Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.191Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.191Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.191Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.191Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.192Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.192Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.192Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.192Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.192Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.192Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.192Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.192Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.193Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.193Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.193Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.193Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:28.193Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/429e087eb68fdd1baed4a07b2bb8a923a9f2f12765ffdb33eef9a1e2911a5997 [none]
+[debug] [2025-09-27T06:52:28.193Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/429e087eb68fdd1baed4a07b2bb8a923a9f2f12765ffdb33eef9a1e2911a5997 [stream]
+[debug] [2025-09-27T06:52:28.195Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/bf41fcb3d250259b707cbd7ea6e9c6219511e1097d85911f9f5f4cbb662dd607 [none]
+[debug] [2025-09-27T06:52:28.195Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/bf41fcb3d250259b707cbd7ea6e9c6219511e1097d85911f9f5f4cbb662dd607 [stream]
+[debug] [2025-09-27T06:52:28.197Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/c5bb618387fc33e439c3196eab8af277fcca36fd16bfd5e526a396eb33218c7e [none]
+[debug] [2025-09-27T06:52:28.197Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/c5bb618387fc33e439c3196eab8af277fcca36fd16bfd5e526a396eb33218c7e [stream]
+[debug] [2025-09-27T06:52:28.199Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/f66564670b5bfe49f3f04a5b63107bae60f4a7736f1d3b83aa0115f7acf45150 [none]
+[debug] [2025-09-27T06:52:28.199Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/f66564670b5bfe49f3f04a5b63107bae60f4a7736f1d3b83aa0115f7acf45150 [stream]
+[debug] [2025-09-27T06:52:28.201Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/1463be9bedc82e16f9364eec7a1f5152cbe56229401381eed65c1496cb884407 [none]
+[debug] [2025-09-27T06:52:28.201Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/1463be9bedc82e16f9364eec7a1f5152cbe56229401381eed65c1496cb884407 [stream]
+[debug] [2025-09-27T06:52:28.202Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/2356e0b814e58a349935c8de17226873d615d088a867d591fef48a64c80c9a2f [none]
+[debug] [2025-09-27T06:52:28.202Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/2356e0b814e58a349935c8de17226873d615d088a867d591fef48a64c80c9a2f [stream]
+[debug] [2025-09-27T06:52:28.204Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/278439cdcba07849829c22a1c3fc6affa6840aac6934fc2944fb715b924a6bfa [none]
+[debug] [2025-09-27T06:52:28.204Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/278439cdcba07849829c22a1c3fc6affa6840aac6934fc2944fb715b924a6bfa [stream]
+[debug] [2025-09-27T06:52:28.205Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/91f0170f0076a6fe411652e9e476fc2e325a3d952638ffc6954c76e846d8f2a9 [none]
+[debug] [2025-09-27T06:52:28.205Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/91f0170f0076a6fe411652e9e476fc2e325a3d952638ffc6954c76e846d8f2a9 [stream]
+[debug] [2025-09-27T06:52:28.206Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/8ad55535bee7fd9badf1a07f086bbb2a77dbd118e570ebda898348df28579b4f [none]
+[debug] [2025-09-27T06:52:28.206Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/8ad55535bee7fd9badf1a07f086bbb2a77dbd118e570ebda898348df28579b4f [stream]
+[debug] [2025-09-27T06:52:28.207Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/4e1d3adad9ce7e17c0d13fac197f1c27091906f4ecf3909c9f51247bff345118 [none]
+[debug] [2025-09-27T06:52:28.207Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/4e1d3adad9ce7e17c0d13fac197f1c27091906f4ecf3909c9f51247bff345118 [stream]
+[debug] [2025-09-27T06:52:28.209Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/3240836818094fc91d975460af490976fe337aa19faeb969f6608418184c3baf [none]
+[debug] [2025-09-27T06:52:28.209Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/3240836818094fc91d975460af490976fe337aa19faeb969f6608418184c3baf [stream]
+[debug] [2025-09-27T06:52:28.211Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/b5d300cb9d3f2ed365013f18703452d8009dd2cb314a187d1fb98fec7b6859cc [none]
+[debug] [2025-09-27T06:52:28.211Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/b5d300cb9d3f2ed365013f18703452d8009dd2cb314a187d1fb98fec7b6859cc [stream]
+[debug] [2025-09-27T06:52:28.212Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/a6034dbcb793aedf1c6aecb5f2b86ec5cac891f7baedfb0957e698bf4e49ab31 [none]
+[debug] [2025-09-27T06:52:28.212Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/a6034dbcb793aedf1c6aecb5f2b86ec5cac891f7baedfb0957e698bf4e49ab31 [stream]
+[debug] [2025-09-27T06:52:28.213Z] [hosting][populate queue][FINAL] {"max":486,"min":486,"avg":486,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":506}
+[debug] [2025-09-27T06:52:28.213Z] [hosting] uploads queued: 13
+[info] i  hosting: uploading new files [0/13] (0%) 
+[debug] [2025-09-27T06:52:29.877Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/2356e0b814e58a349935c8de17226873d615d088a867d591fef48a64c80c9a2f 200
+[debug] [2025-09-27T06:52:29.877Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/2356e0b814e58a349935c8de17226873d615d088a867d591fef48a64c80c9a2f [stream]
+[debug] [2025-09-27T06:52:29.879Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/278439cdcba07849829c22a1c3fc6affa6840aac6934fc2944fb715b924a6bfa 200
+[debug] [2025-09-27T06:52:29.879Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/278439cdcba07849829c22a1c3fc6affa6840aac6934fc2944fb715b924a6bfa [stream]
+[debug] [2025-09-27T06:52:29.989Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/1463be9bedc82e16f9364eec7a1f5152cbe56229401381eed65c1496cb884407 200
+[debug] [2025-09-27T06:52:29.990Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/1463be9bedc82e16f9364eec7a1f5152cbe56229401381eed65c1496cb884407 [stream]
+[debug] [2025-09-27T06:52:29.991Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/429e087eb68fdd1baed4a07b2bb8a923a9f2f12765ffdb33eef9a1e2911a5997 200
+[debug] [2025-09-27T06:52:29.992Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/429e087eb68fdd1baed4a07b2bb8a923a9f2f12765ffdb33eef9a1e2911a5997 [stream]
+[debug] [2025-09-27T06:52:29.993Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/4e1d3adad9ce7e17c0d13fac197f1c27091906f4ecf3909c9f51247bff345118 200
+[debug] [2025-09-27T06:52:29.993Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/4e1d3adad9ce7e17c0d13fac197f1c27091906f4ecf3909c9f51247bff345118 [stream]
+[debug] [2025-09-27T06:52:29.993Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/f66564670b5bfe49f3f04a5b63107bae60f4a7736f1d3b83aa0115f7acf45150 200
+[debug] [2025-09-27T06:52:29.994Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/f66564670b5bfe49f3f04a5b63107bae60f4a7736f1d3b83aa0115f7acf45150 [stream]
+[debug] [2025-09-27T06:52:29.994Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/8ad55535bee7fd9badf1a07f086bbb2a77dbd118e570ebda898348df28579b4f 200
+[debug] [2025-09-27T06:52:29.995Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/8ad55535bee7fd9badf1a07f086bbb2a77dbd118e570ebda898348df28579b4f [stream]
+[debug] [2025-09-27T06:52:29.995Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/c5bb618387fc33e439c3196eab8af277fcca36fd16bfd5e526a396eb33218c7e 200
+[debug] [2025-09-27T06:52:29.995Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/c5bb618387fc33e439c3196eab8af277fcca36fd16bfd5e526a396eb33218c7e [stream]
+[debug] [2025-09-27T06:52:29.996Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/b5d300cb9d3f2ed365013f18703452d8009dd2cb314a187d1fb98fec7b6859cc 200
+[debug] [2025-09-27T06:52:29.996Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/b5d300cb9d3f2ed365013f18703452d8009dd2cb314a187d1fb98fec7b6859cc [stream]
+[debug] [2025-09-27T06:52:30.013Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/91f0170f0076a6fe411652e9e476fc2e325a3d952638ffc6954c76e846d8f2a9 200
+[debug] [2025-09-27T06:52:30.013Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/91f0170f0076a6fe411652e9e476fc2e325a3d952638ffc6954c76e846d8f2a9 [stream]
+[debug] [2025-09-27T06:52:30.014Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/3240836818094fc91d975460af490976fe337aa19faeb969f6608418184c3baf 200
+[debug] [2025-09-27T06:52:30.014Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/3240836818094fc91d975460af490976fe337aa19faeb969f6608418184c3baf [stream]
+[debug] [2025-09-27T06:52:30.258Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/bf41fcb3d250259b707cbd7ea6e9c6219511e1097d85911f9f5f4cbb662dd607 200
+[debug] [2025-09-27T06:52:30.258Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/bf41fcb3d250259b707cbd7ea6e9c6219511e1097d85911f9f5f4cbb662dd607 [stream]
+[debug] [2025-09-27T06:52:30.671Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/a6034dbcb793aedf1c6aecb5f2b86ec5cac891f7baedfb0957e698bf4e49ab31 200
+[debug] [2025-09-27T06:52:30.671Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/robe-non1/versions/bd308b0734b14fba/files/a6034dbcb793aedf1c6aecb5f2b86ec5cac891f7baedfb0957e698bf4e49ab31 [stream]
+[debug] [2025-09-27T06:52:30.672Z] [hosting][upload queue][FINAL] {"max":2478,"min":1687,"avg":1860.6923076923076,"active":0,"complete":13,"success":13,"errored":0,"retried":0,"total":13,"elapsed":2484}
+[info] i  hosting: upload complete 
+[info] ✔  hosting[robe-non1]: file upload complete 
+[debug] [2025-09-27T06:52:30.672Z] [hosting] deploy completed after 3302ms
+[debug] [2025-09-27T06:52:30.673Z] [
+  {
+    "config": {
+      "public": "build",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "site": "robe-non1"
+    },
+    "version": "projects/491977372291/sites/robe-non1/versions/bd308b0734b14fba"
+  }
+]
+[info] i  hosting[robe-non1]: finalizing version... 
+[debug] [2025-09-27T06:52:30.676Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:30.676Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:30.676Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/robe-non1/versions/bd308b0734b14fba updateMask=status%2Cconfig
+[debug] [2025-09-27T06:52:30.676Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/robe-non1/versions/bd308b0734b14fba {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]}}
+[debug] [2025-09-27T06:52:31.561Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/robe-non1/versions/bd308b0734b14fba 200
+[debug] [2025-09-27T06:52:31.561Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/robe-non1/versions/bd308b0734b14fba {"name":"projects/491977372291/sites/robe-non1/versions/bd308b0734b14fba","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2025-09-27T06:52:26.633184Z","createUser":{"email":"robeinss0077@gmail.com"},"finalizeTime":"2025-09-27T06:52:31.326001Z","finalizeUser":{"email":"robeinss0077@gmail.com"}}
+[debug] [2025-09-27T06:52:31.561Z] [hosting] finalized version for robe-non1:[object Object]
+[info] ✔  hosting[robe-non1]: version finalized 
+[info] i  hosting[robe-non1]: releasing new version... 
+[debug] [2025-09-27T06:52:31.561Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:31.561Z] Checked if tokens are valid: true, expires at: 1758959543652
+[debug] [2025-09-27T06:52:31.561Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/robe-non1/channels/live/releases versionName=projects%2F491977372291%2Fsites%2Frobe-non1%2Fversions%2Fbd308b0734b14fba
+[debug] [2025-09-27T06:52:31.562Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/robe-non1/channels/live/releases {}
+[debug] [2025-09-27T06:52:32.085Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/robe-non1/channels/live/releases 200
+[debug] [2025-09-27T06:52:32.086Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/robe-non1/channels/live/releases {"name":"projects/491977372291/sites/robe-non1/channels/live/releases/1758955951284000","version":{"name":"projects/491977372291/sites/robe-non1/versions/bd308b0734b14fba","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2025-09-27T06:52:26.633184Z","createUser":{"email":"robeinss0077@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLtr-1tkYBUk9_-he2yx-nE-dhAwMAmn1AFjIb66yKVVPnaNA=mo"},"finalizeTime":"2025-09-27T06:52:31.326001Z","finalizeUser":{"email":"robeinss0077@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLtr-1tkYBUk9_-he2yx-nE-dhAwMAmn1AFjIb66yKVVPnaNA=mo"}},"type":"DEPLOY","releaseTime":"2025-09-27T06:52:31.284Z","releaseUser":{"email":"robeinss0077@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLtr-1tkYBUk9_-he2yx-nE-dhAwMAmn1AFjIb66yKVVPnaNA=mo"}}
+[debug] [2025-09-27T06:52:32.086Z] [hosting] release: {"name":"projects/491977372291/sites/robe-non1/channels/live/releases/1758955951284000","version":{"name":"projects/491977372291/sites/robe-non1/versions/bd308b0734b14fba","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2025-09-27T06:52:26.633184Z","createUser":{"email":"robeinss0077@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLtr-1tkYBUk9_-he2yx-nE-dhAwMAmn1AFjIb66yKVVPnaNA=mo"},"finalizeTime":"2025-09-27T06:52:31.326001Z","finalizeUser":{"email":"robeinss0077@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLtr-1tkYBUk9_-he2yx-nE-dhAwMAmn1AFjIb66yKVVPnaNA=mo"}},"type":"DEPLOY","releaseTime":"2025-09-27T06:52:31.284Z","releaseUser":{"email":"robeinss0077@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLtr-1tkYBUk9_-he2yx-nE-dhAwMAmn1AFjIb66yKVVPnaNA=mo"}}
+[info] ✔  hosting[robe-non1]: release complete 
+[info] 
+[info] ✔  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/robe-non1/overview
+[info] Hosting URL: https://robe-non1.web.app
