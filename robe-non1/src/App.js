@@ -1554,36 +1554,48 @@ function Dashboard({ user }) {
                     </button>
                   </div>
                 )}
-                <div className="grid grid-cols-2 md:flex md:flex-row bg-gray-100 p-1.5 rounded-2xl w-full shadow-inner gap-1.5 md:gap-1">
+                <div className="grid grid-cols-2 md:grid-cols-4 bg-gray-50 border border-gray-100 p-1 rounded-2xl w-full shadow-sm gap-1">
                   {!newCustomerForm.isProcessingExisting && (
                     <button
                       type="button"
                       onClick={() => setNewCustomerForm(prev => ({ ...prev, mode: 'pending', isImmediateConsult: false }))}
-                      className={`px - 4 py - 3 rounded - xl text - sm md: text - base font - black transition - all whitespace - nowrap flex items - center justify - center ${newCustomerForm.mode === 'pending' ? 'bg-white shadow-lg text-blue-600' : 'text-gray-500 hover:text-gray-700'} `}
+                      className={`px-3 py-3 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 ${newCustomerForm.mode === 'pending'
+                        ? 'bg-white text-blue-600 shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-blue-50'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50'
+                        }`}
                     >
-                      단순 DB 등록
+                      <Plus className="w-3.5 h-3.5" /> 단순 DB 등록
                     </button>
                   )}
                   <button
                     type="button"
                     onClick={() => setNewCustomerForm(prev => ({ ...prev, mode: 'contracted', isImmediateConsult: true, status: '계약' }))}
-                    className={`px - 4 py - 3 rounded - xl text - sm md: text - base font - black transition - all whitespace - nowrap flex items - center justify - center ${newCustomerForm.mode === 'contracted' ? 'bg-blue-600 shadow-lg text-white' : 'text-gray-500 hover:text-gray-700'} `}
+                    className={`px-3 py-3 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 ${newCustomerForm.mode === 'contracted'
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50'
+                      }`}
                   >
-                    계약 완료
+                    <Trophy className="w-3.5 h-3.5" /> 계약 완료
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewCustomerForm(prev => ({ ...prev, mode: 'uncontracted', isImmediateConsult: true, status: '미계약' }))}
-                    className={`px - 4 py - 3 rounded - xl text - sm md: text - base font - black transition - all whitespace - nowrap flex items - center justify - center ${newCustomerForm.mode === 'uncontracted' ? 'bg-red-500 shadow-lg text-white' : 'text-gray-500 hover:text-gray-700'} `}
+                    className={`px-3 py-3 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 ${newCustomerForm.mode === 'uncontracted'
+                      ? 'bg-rose-500 text-white shadow-lg shadow-rose-200'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50'
+                      }`}
                   >
-                    미계약
+                    <X className="w-3.5 h-3.5" /> 미계약
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewCustomerForm(prev => ({ ...prev, mode: 'noshow', isImmediateConsult: true, status: '노쇼' }))}
-                    className={`px - 4 py - 3 rounded - xl text - sm md: text - base font - black transition - all whitespace - nowrap flex items - center justify - center ${newCustomerForm.mode === 'noshow' ? 'bg-gray-700 shadow-lg text-white' : 'text-gray-500 hover:text-gray-700'} `}
+                    className={`px-3 py-3 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 ${newCustomerForm.mode === 'noshow'
+                      ? 'bg-gray-800 text-white shadow-lg shadow-gray-300'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50'
+                      }`}
                   >
-                    노쇼/취소
+                    <Minus className="w-3.5 h-3.5" /> 노쇼/취소
                   </button>
                 </div>
               </div>
@@ -1857,17 +1869,20 @@ function Dashboard({ user }) {
           <div className="space-y-6">
             <div className="bg-white p-3 px-5 rounded-2xl shadow-lg border border-gray-100">
               <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-6">
-                <div className="grid grid-cols-4 md:flex items-center bg-gray-100 p-1.5 rounded-2xl w-full md:w-auto shadow-inner gap-1.5">
+                <div className="grid grid-cols-4 md:flex items-center bg-gray-50 border border-gray-100 p-1 rounded-2xl w-full md:w-auto shadow-sm gap-1">
                   {[
-                    { id: 'all', label: '전체' },
-                    { id: 'contracted', label: '계약' },
-                    { id: 'uncontracted', label: '미계약' },
-                    { id: 'noshow', label: '노쇼' }
+                    { id: 'all', label: '전체', color: 'blue' },
+                    { id: 'contracted', label: '계약', color: 'blue' },
+                    { id: 'uncontracted', label: '미계약', color: 'rose' },
+                    { id: 'noshow', label: '노쇼', color: 'gray' }
                   ].map(tab => (
                     <button
                       key={tab.id}
                       onClick={() => setStatusFilter(tab.id)}
-                      className={`px - 4 py - 3 rounded - xl text - xs font - black transition - all whitespace - nowrap flex items - center justify - center ${statusFilter === tab.id ? 'bg-white shadow-lg text-blue-600' : 'text-gray-400 hover:text-gray-600'} `}
+                      className={`px-3 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 md:min-w-[80px] ${statusFilter === tab.id
+                          ? (tab.id === 'all' || tab.id === 'contracted' ? 'bg-blue-600 text-white shadow-md' : tab.id === 'uncontracted' ? 'bg-rose-500 text-white shadow-md' : 'bg-gray-800 text-white shadow-md')
+                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50'
+                        }`}
                     >
                       {tab.label}
                     </button>
