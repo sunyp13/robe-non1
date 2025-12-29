@@ -1173,23 +1173,22 @@ function Dashboard({ user }) {
           <h1 className="text-lg font-black text-gray-800 tracking-tight">계약관리 CRM</h1>
         </div>
 
-        {/* Main Navigation Tabs */}
-        <div className="flex bg-gray-100 p-1.5 rounded-2xl gap-1 mb-2 md:mb-0 shadow-inner w-full max-w-4xl mx-auto">
+        <div className="flex bg-gray-100 p-2 rounded-2xl gap-2 mb-2 md:mb-0 shadow-inner w-full max-w-4xl mx-auto overflow-x-auto custom-scrollbar">
           <button
             onClick={() => setActiveTab('contract_dashboard')}
-            className={`flex-1 px-3 py-3 rounded-xl text-[13px] md:text-sm font-black transition-all ${activeTab === 'contract_dashboard' ? 'bg-white text-red-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`}
+            className={`flex-1 px-4 py-3.5 rounded-xl text-[13px] md:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'contract_dashboard' ? 'bg-white text-red-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`}
           >
             계약대시보드
           </button>
           <button
             onClick={() => setActiveTab('registration_consultation')}
-            className={`flex-1 px-3 py-3 rounded-xl text-[13px] md:text-sm font-black transition-all ${activeTab === 'registration_consultation' ? 'bg-white text-red-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`}
+            className={`flex-1 px-4 py-3.5 rounded-xl text-[13px] md:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'registration_consultation' ? 'bg-white text-red-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`}
           >
             등록·상담
           </button>
           <button
             onClick={() => setActiveTab('db_list')}
-            className={`flex-1 px-3 py-3 rounded-xl text-[13px] md:text-sm font-black transition-all ${activeTab === 'db_list' ? 'bg-white text-red-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`}
+            className={`flex-1 px-4 py-3.5 rounded-xl text-[13px] md:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'db_list' ? 'bg-white text-red-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`}
           >
             DB리스트
           </button>
@@ -1467,7 +1466,7 @@ function Dashboard({ user }) {
                       placeholder="대기 고객 또는 상담자 검색..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full md:w-64 pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-yellow-400 outline-none transition-all"
+                      className="w-full md:w-64 pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-yellow-400 outline-none transition-all font-bold shadow-sm"
                     />
                   </div>
                   <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 rounded-xl border border-yellow-200 shadow-sm whitespace-nowrap">
@@ -1522,7 +1521,7 @@ function Dashboard({ user }) {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={(e) => { e.stopPropagation(); handleSelectWaitingCustomer(r); }}
-                              className="bg-yellow-500 text-white px-4 py-2 rounded-xl text-[11px] font-black hover:bg-yellow-600 shadow-sm transition-all transform group-hover:scale-105 active:scale-95 whitespace-nowrap"
+                              className="bg-yellow-500 text-white px-5 py-2.5 rounded-xl text-xs font-black hover:bg-yellow-600 shadow-md transition-all active:scale-95 whitespace-nowrap"
                             >
                               선택
                             </button>
@@ -1544,21 +1543,23 @@ function Dashboard({ user }) {
 
             <div id="consultation-form-section" className={`bg - white p - 5 md: p - 7 rounded - 3xl shadow - xl border transition - all duration - 500 ${newCustomerForm.isProcessingExisting ? 'border-yellow-400 ring-4 ring-yellow-50' : 'border-gray-100'} `}>
               <div className="flex flex-col gap-5 border-b border-gray-100 pb-6 mb-6">
-                <div className="flex flex-wrap items-center bg-gray-100 p-1.5 rounded-2xl w-full shadow-inner">
-                  {newCustomerForm.isProcessingExisting && (
+                {newCustomerForm.isProcessingExisting && (
+                  <div className="flex w-full mb-3 gap-2">
                     <button
                       type="button"
                       onClick={handleCancelSelection}
-                      className="px-5 py-2.5 mr-2 rounded-xl text-sm font-black bg-white text-red-600 hover:bg-red-50 transition-all shadow-md flex items-center"
+                      className="flex-1 py-3.5 rounded-2xl text-sm font-black bg-red-50 text-red-600 border border-red-100 shadow-sm flex items-center justify-center gap-2 active:scale-95 transition-all"
                     >
-                      <X className="w-4 h-4 mr-1" /> 선택 취소
+                      <X className="w-5 h-5" /> 선택 취소 (새로 등록)
                     </button>
-                  )}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 md:flex md:flex-row bg-gray-100 p-1.5 rounded-2xl w-full shadow-inner gap-1.5 md:gap-1">
                   {!newCustomerForm.isProcessingExisting && (
                     <button
                       type="button"
                       onClick={() => setNewCustomerForm(prev => ({ ...prev, mode: 'pending', isImmediateConsult: false }))}
-                      className={`flex - 1 px - 4 py - 3 rounded - xl text - sm md: text - base font - black transition - all whitespace - nowrap ${newCustomerForm.mode === 'pending' ? 'bg-white shadow-lg text-blue-600 scale-105 transform' : 'text-gray-500 hover:text-gray-700'} `}
+                      className={`px - 4 py - 3 rounded - xl text - sm md: text - base font - black transition - all whitespace - nowrap flex items - center justify - center ${newCustomerForm.mode === 'pending' ? 'bg-white shadow-lg text-blue-600' : 'text-gray-500 hover:text-gray-700'} `}
                     >
                       단순 DB 등록
                     </button>
@@ -1566,21 +1567,21 @@ function Dashboard({ user }) {
                   <button
                     type="button"
                     onClick={() => setNewCustomerForm(prev => ({ ...prev, mode: 'contracted', isImmediateConsult: true, status: '계약' }))}
-                    className={`flex - 1 px - 4 py - 3 rounded - xl text - sm md: text - base font - black transition - all whitespace - nowrap ${newCustomerForm.mode === 'contracted' ? 'bg-blue-600 shadow-lg text-white scale-105 transform' : 'text-gray-500 hover:text-gray-700'} `}
+                    className={`px - 4 py - 3 rounded - xl text - sm md: text - base font - black transition - all whitespace - nowrap flex items - center justify - center ${newCustomerForm.mode === 'contracted' ? 'bg-blue-600 shadow-lg text-white' : 'text-gray-500 hover:text-gray-700'} `}
                   >
                     계약 완료
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewCustomerForm(prev => ({ ...prev, mode: 'uncontracted', isImmediateConsult: true, status: '미계약' }))}
-                    className={`flex - 1 px - 4 py - 3 rounded - xl text - sm md: text - base font - black transition - all whitespace - nowrap ${newCustomerForm.mode === 'uncontracted' ? 'bg-red-500 shadow-lg text-white scale-105 transform' : 'text-gray-500 hover:text-gray-700'} `}
+                    className={`px - 4 py - 3 rounded - xl text - sm md: text - base font - black transition - all whitespace - nowrap flex items - center justify - center ${newCustomerForm.mode === 'uncontracted' ? 'bg-red-500 shadow-lg text-white' : 'text-gray-500 hover:text-gray-700'} `}
                   >
                     미계약
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewCustomerForm(prev => ({ ...prev, mode: 'noshow', isImmediateConsult: true, status: '노쇼' }))}
-                    className={`flex - 1 px - 4 py - 3 rounded - xl text - sm md: text - base font - black transition - all whitespace - nowrap ${newCustomerForm.mode === 'noshow' ? 'bg-gray-700 shadow-lg text-white scale-105 transform' : 'text-gray-500 hover:text-gray-700'} `}
+                    className={`px - 4 py - 3 rounded - xl text - sm md: text - base font - black transition - all whitespace - nowrap flex items - center justify - center ${newCustomerForm.mode === 'noshow' ? 'bg-gray-700 shadow-lg text-white' : 'text-gray-500 hover:text-gray-700'} `}
                   >
                     노쇼/취소
                   </button>
@@ -1653,7 +1654,7 @@ function Dashboard({ user }) {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">지점</label>
                         <div className="relative">
-                          <select name="branch" value={newCustomerForm.branch} onChange={handleCustomerFormChange} className="w-full p-2 border border-gray-300 rounded-lg appearance-none">
+                          <select name="branch" value={newCustomerForm.branch} onChange={handleCustomerFormChange} className="w-full p-3 border border-gray-300 rounded-xl appearance-none bg-white text-sm font-bold">
                             {branches.map(b => <option key={b} value={b}>{b}</option>)}
                           </select>
                           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
@@ -1662,7 +1663,7 @@ function Dashboard({ user }) {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">방문 경로</label>
                         <div className="relative">
-                          <select name="source" value={newCustomerForm.source} onChange={handleCustomerFormChange} className="w-full p-2 border border-gray-300 rounded-lg appearance-none">
+                          <select name="source" value={newCustomerForm.source} onChange={handleCustomerFormChange} className="w-full p-3 border border-gray-300 rounded-xl appearance-none bg-white text-sm font-bold">
                             {sources.map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
@@ -1709,22 +1710,22 @@ function Dashboard({ user }) {
 
                       {/* Customer Info */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">고객명</label>
-                        <input type="text" name="customerName" value={newCustomerForm.customerName} onChange={handleCustomerFormChange} required className="w-full p-2 border border-gray-300 rounded-lg" placeholder="고객 이름" />
+                        <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">고객명</label>
+                        <input type="text" name="customerName" value={newCustomerForm.customerName} onChange={handleCustomerFormChange} required className="w-full p-3 border border-gray-300 rounded-xl text-sm font-bold" placeholder="고객 이름" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">연락처</label>
-                        <input type="tel" name="customerContact" value={newCustomerForm.customerContact} onChange={handleCustomerFormChange} className="w-full p-2 border border-gray-300 rounded-lg" placeholder="010-0000-0000" />
+                        <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">연락처</label>
+                        <input type="tel" name="customerContact" value={newCustomerForm.customerContact} onChange={handleCustomerFormChange} className="w-full p-3 border border-gray-300 rounded-xl text-sm font-bold" placeholder="010-0000-0000" />
                       </div>
 
                       {/* Dates */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">예약/방문 날짜</label>
-                        <input type="date" name="reservationDate" value={newCustomerForm.reservationDate} onChange={handleCustomerFormChange} className="w-full p-2 border border-gray-300 rounded-lg" />
+                        <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">예약/방문 날짜</label>
+                        <input type="date" name="reservationDate" value={newCustomerForm.reservationDate} onChange={handleCustomerFormChange} className="w-full p-3 border border-gray-300 rounded-xl text-sm font-bold" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">예약 시간</label>
-                        <input type="time" name="reservationTime" value={newCustomerForm.reservationTime} onChange={handleCustomerFormChange} className="w-full p-2 border border-gray-300 rounded-lg" />
+                        <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">예약 시간</label>
+                        <input type="time" name="reservationTime" value={newCustomerForm.reservationTime} onChange={handleCustomerFormChange} className="w-full p-3 border border-gray-300 rounded-xl text-sm font-bold" />
                       </div>
                     </div>
                   )}
@@ -1824,8 +1825,8 @@ function Dashboard({ user }) {
                   </div>
                 )}
 
-                <div className="flex justify-end pt-4 border-t border-gray-100">
-                  <button type="submit" className={`px - 10 py - 4 text - white font - black rounded - 2xl shadow - xl transition - all transform hover: -translate - y - 1 active: scale - 95 flex items - center text - lg ${newCustomerForm.mode === 'contracted' ? 'bg-blue-600 hover:bg-blue-700' :
+                <div className="pt-6 border-t border-gray-100">
+                  <button type="submit" className={`w - full py - 4 text - white font - black rounded - 2xl shadow - xl transition - all transform active: scale - 95 flex items - center justify - center text - lg ${newCustomerForm.mode === 'contracted' ? 'bg-blue-600 hover:bg-blue-700' :
                     newCustomerForm.mode === 'uncontracted' ? 'bg-red-500 hover:bg-red-600' :
                       newCustomerForm.mode === 'noshow' ? 'bg-black hover:bg-gray-800' :
                         newCustomerForm.isProcessingExisting ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-red-600 hover:bg-red-700'
@@ -1855,8 +1856,8 @@ function Dashboard({ user }) {
         {activeTab === 'db_list' && (
           <div className="space-y-6">
             <div className="bg-white p-3 px-5 rounded-2xl shadow-lg border border-gray-100">
-              <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <div className="flex items-center bg-gray-100 p-1 rounded-xl w-full md:w-auto shadow-inner">
+              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-6">
+                <div className="grid grid-cols-4 md:flex items-center bg-gray-100 p-1.5 rounded-2xl w-full md:w-auto shadow-inner gap-1.5">
                   {[
                     { id: 'all', label: '전체' },
                     { id: 'contracted', label: '계약' },
@@ -1866,30 +1867,30 @@ function Dashboard({ user }) {
                     <button
                       key={tab.id}
                       onClick={() => setStatusFilter(tab.id)}
-                      className={`flex - 1 md: flex - none px - 4 py - 1.5 rounded - lg text - xs font - black transition - all whitespace - nowrap ${statusFilter === tab.id ? 'bg-white shadow text-blue-600' : 'text-gray-400 hover:text-gray-600'} `}
+                      className={`px - 4 py - 3 rounded - xl text - xs font - black transition - all whitespace - nowrap flex items - center justify - center ${statusFilter === tab.id ? 'bg-white shadow-lg text-blue-600' : 'text-gray-400 hover:text-gray-600'} `}
                     >
                       {tab.label}
                     </button>
                   ))}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                  <div className="relative flex-grow md:flex-none min-w-[200px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                  <div className="relative flex-grow min-w-[200px]">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
                       type="text"
-                      placeholder="검색..."
+                      placeholder="고객명, 연락처, 상담자 검색..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-[12px] font-bold"
+                      className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-bold shadow-sm"
                     />
                   </div>
                   <div className="relative">
-                    <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} className="appearance-none pl-3 pr-8 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[11px] font-black focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
-                      <option value="all">모든 경로</option>
+                    <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} className="appearance-none w-full sm:w-auto pl-4 pr-10 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-[12px] font-black focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer shadow-sm">
+                      <option value="all">모든 방문 경로</option>
                       {sources.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3 h-3 pointer-events-none" />
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
                   </div>
                 </div>
               </div>
