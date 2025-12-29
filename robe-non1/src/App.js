@@ -1356,19 +1356,12 @@ function Dashboard({ user }) {
                 />
               </div>
 
-              {/* Salesperson Stats Section (New) */}
-              <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100">
-                <div className="mb-6 border-b border-gray-50 pb-4">
-                  <h3 className="text-xl font-black text-gray-800">상담자별 실적 비교 (3개월 상세)</h3>
-                  <p className="text-[12px] font-bold text-gray-400">상담자별 신규계약, 재계약, 미계약 추이를 확인하세요.</p>
-                </div>
-                <SalespersonTrendSection
-                  trendData={dashboardData.salespersonTrend}
-                  targetMonths={dashboardData.targetMonths}
-                  salespersonSearch={salespersonSearch}
-                  setSalespersonSearch={setSalespersonSearch}
-                />
-              </div>
+              <SalespersonTrendSection
+                trendData={dashboardData.salespersonTrend}
+                targetMonths={dashboardData.targetMonths}
+                salespersonSearch={salespersonSearch}
+                setSalespersonSearch={setSalespersonSearch}
+              />
 
               {/* Weekly Ranking Section (Integrated) */}
               <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100">
@@ -1427,20 +1420,6 @@ function Dashboard({ user }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* <div className="bg-white p-6 rounded-2xl shadow-lg">
-              <h2 className="text-xl font-semibold mb-4 text-gray-700">월별 미계약 건수 추이</h2>
-              {renderChart(dashboardData.monthlyData, MonthlyLineChart)}
-            </div> */}
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="고객 또는 상담자 이름..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500"
-              />
-            </div>
           </div>
         )}
 
@@ -2161,7 +2140,7 @@ function Dashboard({ user }) {
           />
         )
       }
-    </div>
+    </div >
   );
 }
 
@@ -2342,17 +2321,17 @@ const SalespersonTrendSection = ({ trendData, targetMonths, salespersonSearch, s
                 return (
                   <div key={sp} className="flex flex-col items-center min-w-[60px]">
                     <div className="flex items-end gap-0.5 h-20 mb-2">
-                      <div className="relative flex flex-col items-center">
+                      <div className="relative flex flex-col items-center h-full">
                         <span className="absolute -top-4 text-[8px] font-bold text-gray-400">{d2}</span>
-                        <div style={{ height: `${d2 > 0 ? Math.max(5, (d2 / globalMax) * 100) : 0}%` }} className="w-2.5 bg-gray-100 rounded-t-[1px]"></div>
+                        <div style={{ height: `${d2 > 0 ? Math.max(5, (d2 / globalMax) * 100) : 0}%` }} className="w-4 bg-gray-100 rounded-t-[2px] border-x border-t border-gray-200"></div>
                       </div>
-                      <div className="relative flex flex-col items-center">
+                      <div className="relative flex flex-col items-center h-full">
                         <span className="absolute -top-4 text-[8px] font-bold text-gray-500">{d1}</span>
-                        <div style={{ height: `${d1 > 0 ? Math.max(5, (d1 / globalMax) * 100) : 0}%` }} className="w-2.5 bg-gray-300 rounded-t-[1px]"></div>
+                        <div style={{ height: `${d1 > 0 ? Math.max(5, (d1 / globalMax) * 100) : 0}%` }} className="w-4 bg-gray-300 rounded-t-[2px] border-x border-t border-gray-400"></div>
                       </div>
-                      <div className="relative flex flex-col items-center">
+                      <div className="relative flex flex-col items-center h-full">
                         <span className="absolute -top-5 text-[9px] font-black text-gray-900">{d0}</span>
-                        <div style={{ height: `${d0 > 0 ? Math.max(5, (d0 / globalMax) * 100) : 0}%`, backgroundColor: barColor }} className="w-2.5 rounded-t-[1px] shadow-sm"></div>
+                        <div style={{ height: `${d0 > 0 ? Math.max(5, (d0 / globalMax) * 100) : 0}%`, backgroundColor: barColor }} className="w-4 rounded-t-[2px] shadow-sm border-x border-t border-black/5"></div>
                       </div>
                     </div>
                     <span className="text-[10px] font-black text-gray-600 w-16 text-center leading-tight">{sp}</span>
@@ -2368,15 +2347,12 @@ const SalespersonTrendSection = ({ trendData, targetMonths, salespersonSearch, s
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/50 p-4 rounded-3xl border border-gray-100">
-        <div>
-          <h4 className="text-[16px] font-black text-gray-800 tracking-tight flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-blue-600" />
-            상담자별 실적 추이 (3개월 상세)
-          </h4>
-          <p className="text-[11px] font-bold text-gray-400 mt-1">상담자별 미계약, 재계약, 신규계약 추이를 확인하세요.</p>
-        </div>
-        <div className="relative w-full md:w-64">
+      <div className="flex flex-col md:flex-row justify-between items-center bg-gray-50/50 p-4 rounded-3xl border border-gray-100 mb-6">
+        <h4 className="text-[16px] font-black text-gray-800 tracking-tight flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-blue-600" />
+          상담자별 실적 추이
+        </h4>
+        <div className="relative w-full md:w-64 mt-4 md:mt-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
