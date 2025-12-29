@@ -1880,8 +1880,8 @@ function Dashboard({ user }) {
                       key={tab.id}
                       onClick={() => setStatusFilter(tab.id)}
                       className={`px-3 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 md:min-w-[80px] ${statusFilter === tab.id
-                          ? (tab.id === 'all' || tab.id === 'contracted' ? 'bg-blue-600 text-white shadow-md' : tab.id === 'uncontracted' ? 'bg-rose-500 text-white shadow-md' : 'bg-gray-800 text-white shadow-md')
-                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50'
+                        ? (tab.id === 'all' || tab.id === 'contracted' ? 'bg-blue-600 text-white shadow-md' : tab.id === 'uncontracted' ? 'bg-rose-500 text-white shadow-md' : 'bg-gray-800 text-white shadow-md')
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50'
                         }`}
                     >
                       {tab.label}
@@ -2309,7 +2309,7 @@ const SalespersonTrendSection = ({ trendData, targetMonths, salespersonSearch, s
         return perfB - perfA;
       });
 
-    let globalMax = 1;
+    let globalMax = 10; // Floor of 10 to ensure better scaling for small numbers
     filteredAndSortedSalespersons.forEach(sp => {
       const val0 = trendData[sp][m0] ? getDataFn(trendData[sp][m0]) : 0;
       const val1 = trendData[sp][m1] ? getDataFn(trendData[sp][m1]) : 0;
@@ -2344,15 +2344,15 @@ const SalespersonTrendSection = ({ trendData, targetMonths, salespersonSearch, s
                     <div className="flex items-end gap-0.5 h-20 mb-2">
                       <div className="relative flex flex-col items-center">
                         <span className="absolute -top-4 text-[8px] font-bold text-gray-400">{d2}</span>
-                        <div style={{ height: `${(d2 / globalMax) * 100}%` }} className="w-2.5 bg-gray-100 rounded-t-[1px]"></div>
+                        <div style={{ height: `${d2 > 0 ? Math.max(5, (d2 / globalMax) * 100) : 0}%` }} className="w-2.5 bg-gray-100 rounded-t-[1px]"></div>
                       </div>
                       <div className="relative flex flex-col items-center">
                         <span className="absolute -top-4 text-[8px] font-bold text-gray-500">{d1}</span>
-                        <div style={{ height: `${(d1 / globalMax) * 100}%` }} className="w-2.5 bg-gray-300 rounded-t-[1px]"></div>
+                        <div style={{ height: `${d1 > 0 ? Math.max(5, (d1 / globalMax) * 100) : 0}%` }} className="w-2.5 bg-gray-300 rounded-t-[1px]"></div>
                       </div>
                       <div className="relative flex flex-col items-center">
                         <span className="absolute -top-5 text-[9px] font-black text-gray-900">{d0}</span>
-                        <div style={{ height: `${(d0 / globalMax) * 100}%`, backgroundColor: barColor }} className="w-2.5 rounded-t-[1px] shadow-sm"></div>
+                        <div style={{ height: `${d0 > 0 ? Math.max(5, (d0 / globalMax) * 100) : 0}%`, backgroundColor: barColor }} className="w-2.5 rounded-t-[1px] shadow-sm"></div>
                       </div>
                     </div>
                     <span className="text-[10px] font-black text-gray-600 w-16 text-center leading-tight">{sp}</span>
