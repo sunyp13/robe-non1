@@ -2321,17 +2321,17 @@ const SalespersonTrendSection = ({ trendData, targetMonths, salespersonSearch, s
                 return (
                   <div key={sp} className="flex flex-col items-center min-w-[60px]">
                     <div className="flex items-end gap-0.5 h-20 mb-2">
-                      <div className="relative flex flex-col items-center h-full">
-                        <span className="absolute -top-4 text-[8px] font-bold text-gray-400">{d2}</span>
-                        <div style={{ height: `${d2 > 0 ? Math.max(5, (d2 / globalMax) * 100) : 0}%` }} className="w-4 bg-gray-100 rounded-t-[2px] border-x border-t border-gray-200"></div>
+                      <div className="relative flex flex-col items-center justify-end h-full group/bar">
+                        <span className="absolute -top-4 text-[8px] font-bold text-gray-400 opacity-0 group-hover/bar:opacity-100 transition-opacity bg-white px-1 rounded shadow-sm z-10">{d2}</span>
+                        <div style={{ height: `${d2 > 0 ? Math.max(8, (d2 / globalMax) * 100) : 0}%` }} className="w-4 bg-gray-100 rounded-t-[3px] border-x border-t border-gray-200 hover:bg-gray-200 transition-colors"></div>
                       </div>
-                      <div className="relative flex flex-col items-center h-full">
-                        <span className="absolute -top-4 text-[8px] font-bold text-gray-500">{d1}</span>
-                        <div style={{ height: `${d1 > 0 ? Math.max(5, (d1 / globalMax) * 100) : 0}%` }} className="w-4 bg-gray-300 rounded-t-[2px] border-x border-t border-gray-400"></div>
+                      <div className="relative flex flex-col items-center justify-end h-full group/bar">
+                        <span className="absolute -top-4 text-[8px] font-bold text-gray-500 opacity-0 group-hover/bar:opacity-100 transition-opacity bg-white px-1 rounded shadow-sm z-10">{d1}</span>
+                        <div style={{ height: `${d1 > 0 ? Math.max(8, (d1 / globalMax) * 100) : 0}%` }} className="w-4 bg-gray-300 rounded-t-[3px] border-x border-t border-gray-400 hover:bg-gray-400 transition-colors"></div>
                       </div>
-                      <div className="relative flex flex-col items-center h-full">
-                        <span className="absolute -top-5 text-[9px] font-black text-gray-900">{d0}</span>
-                        <div style={{ height: `${d0 > 0 ? Math.max(5, (d0 / globalMax) * 100) : 0}%`, backgroundColor: barColor }} className="w-4 rounded-t-[2px] shadow-sm border-x border-t border-black/5"></div>
+                      <div className="relative flex flex-col items-center justify-end h-full group/bar">
+                        <span className="absolute -top-5 text-[9px] font-black text-gray-900 bg-white/80 px-1 rounded shadow-sm z-10">{d0}</span>
+                        <div style={{ height: `${d0 > 0 ? Math.max(8, (d0 / globalMax) * 100) : 0}%`, backgroundColor: barColor }} className="w-4 rounded-t-[3px] shadow-sm border-x border-t border-black/5 hover:brightness-110 transition-all"></div>
                       </div>
                     </div>
                     <span className="text-[10px] font-black text-gray-600 w-16 text-center leading-tight">{sp}</span>
