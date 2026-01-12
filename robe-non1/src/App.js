@@ -10,7 +10,9 @@ import {
 
 // Lucide React for icons
 
-import { ClipboardList, UserRound, ArrowUp, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2, Copy, Phone, Undo2, History, AlertTriangle, Edit, Lock, Search, ChevronDown, ChevronUp, Calendar, Settings, X, BookOpen, BarChart2, TrendingUp, TrendingDown, Minus, Trophy, RefreshCcw, User, MousePointer2 } from 'lucide-react';
+import { ClipboardList, UserRound, ArrowUp, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2, Copy, Phone, Undo2, History, AlertTriangle, Edit, Lock, Search, ChevronDown, ChevronUp, Calendar, Settings, X, BookOpen, BarChart2, TrendingUp, TrendingDown, Minus, Trophy, RefreshCcw, User, MousePointer2, FileText, Download } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 // --- Firebase Configuration & Initialization ---
 const firebaseConfig = {
@@ -70,6 +72,7 @@ function Dashboard({ user }) {
   const [error, setError] = useState(null);
   const topOfPageRef = useRef(null);
   const formRef = useRef(null);
+  const reportRef = useRef(null);
 
 
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -96,6 +99,40 @@ function Dashboard({ user }) {
   const recordsPerPage = 5;
 
   const [statsMonth, setStatsMonth] = useState(new Date());
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleDownloadReport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      // Small delay to ensure the template is rendered if it was conditionally shown
+      // but here we keep it in the DOM (off-screen)
+      const element = reportRef.current;
+      if (!element) return;
+
+      const canvas = await html2canvas(element, {
+        scale: 2, // High resolution
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      const fileName = `${statsMonth.getFullYear()}년_${statsMonth.getMonth() + 1}월_성과보고서.pdf`;
+      pdf.save(fileName);
+    } catch (err) {
+      console.error('Report generation failed:', err);
+      alert('보고서 생성 중 오류가 발생했습니다.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('date-desc');
   const [reasonFilter, setReasonFilter] = useState('all');
@@ -998,9 +1035,11 @@ function Dashboard({ user }) {
         else if (r.status === '노쇼' || r.status === '미방문') totalDBStats.noshow++;
       }
 
-      // Trend: 6 Months (all sources)
-      const trendItem = monthTrend.find(t => t.month === mKey);
-      if (trendItem) trendItem.total++;
+      // Trend: 6 Months (Only 'Uncontracted' records)
+      if (r.status === '미계약') {
+        const trendItem = monthTrend.find(t => t.month === mKey);
+        if (trendItem) trendItem.total++;
+      }
 
       // Lure Specific Analysis (Source: '루어')
       if (r.source === '루어') {
@@ -1232,6 +1271,15 @@ function Dashboard({ user }) {
       </header>
 
       <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+        {/* Hidden Report Template for Capture */}
+        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+          <div ref={reportRef}>
+            <ReportTemplate
+              data={dashboardData}
+              month={statsMonth}
+            />
+          </div>
+        </div>
 
         {/* --- 1. Dashboard Tab (Stats & Charts) --- */}
         {activeTab === 'contract_dashboard' && (
@@ -1333,12 +1381,21 @@ function Dashboard({ user }) {
             <div className="flex flex-col gap-6 mb-6">
 
               {/* Chart Header & Controls */}
-              <div className="bg-white p-4 rounded-2xl shadow-lg flex justify-between items-center sticky top-20 z-10">
-                <h2 className="text-lg font-semibold text-gray-700">지점/상담자별 실적 비교 (3개월)</h2>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setStatsMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))} className="p-1 rounded-full hover:bg-gray-200"><ChevronLeft className="w-5 h-5" /></button>
-                  <span className="font-semibold text-gray-600 text-sm">{statsMonth.toLocaleString('ko-KR', { year: 'numeric', month: 'long' })}</span>
-                  <button onClick={() => setStatsMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))} className="p-1 rounded-full hover:bg-gray-200"><ChevronRight className="w-5 h-5" /></button>
+              <div className="bg-white p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-center sticky top-20 z-10 gap-4">
+                <div className="flex items-center gap-4">
+                  <h2 className="text-lg font-semibold text-gray-700">지점/상담자별 실적 비교 (3개월)</h2>
+                  <button
+                    onClick={handleDownloadReport}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-black hover:bg-blue-700 transition-all shadow-md active:scale-95"
+                  >
+                    <FileText className="w-4 h-4" />
+                    성과 보고서 (A4)
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-xl shadow-inner">
+                  <button onClick={() => setStatsMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))} className="p-1.5 bg-white rounded-lg shadow-sm hover:bg-gray-50 transition-colors"><ChevronLeft className="w-5 h-5" /></button>
+                  <span className="font-black text-gray-700 text-sm px-4">{statsMonth.toLocaleString('ko-KR', { year: 'numeric', month: 'long' })}</span>
+                  <button onClick={() => setStatsMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))} className="p-1.5 bg-white rounded-lg shadow-sm hover:bg-gray-50 transition-colors"><ChevronRight className="w-5 h-5" /></button>
                 </div>
               </div>
 
@@ -2743,6 +2800,141 @@ const TopNChartReasons = ({ data }) => {
           <span className="text-xs font-bold text-gray-600">{count}</span>
         </div>
       ))}
+    </div>
+  );
+};
+
+const ReportTemplate = ({ data, month }) => {
+  if (!data) return null;
+  const monthStr = month.toLocaleString('ko-KR', { year: 'numeric', month: 'long' });
+  const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  return (
+    <div style={{
+      width: '800px',
+      minHeight: '1130px',
+      backgroundColor: '#ffffff',
+      padding: '40px',
+      color: '#1a1a1a',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', borderBottom: '3px solid #1a1a1a', paddingBottom: '20px' }}>
+        <div>
+          <h1 style={{ fontSize: '32px', fontWeight: '900', margin: 0, letterSpacing: '-1px' }}>{monthStr} 성과 보고서</h1>
+          <p style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>CRM 실적 및 대시보드 요약 리포트</p>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: '12px', fontWeight: 'bold' }}>출력일시: {todayStr}</p>
+          <p style={{ fontSize: '10px', color: '#888' }}>ROBE Dashboard 시스템 생성</p>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '40px' }}>
+        {[
+          { label: '전체 DB 예약', value: data.totalDBStats.total, unit: '건', color: '#2563eb' },
+          { label: '계약 성공', value: data.totalDBStats.contracted, unit: '건', color: '#059669' },
+          { label: '성공률', value: data.totalDBStats.total > 0 ? ((data.totalDBStats.contracted / data.totalDBStats.total) * 100).toFixed(1) : 0, unit: '%', color: '#7c3aed' },
+          { label: '매출 합계', value: (data.salespersonStatsMatrix.reduce((acc, row) => acc + (row['매출합계'] || 0), 0) / 10000).toFixed(1) + '억', unit: '', color: '#dc2626' }
+        ].map((kpi, i) => (
+          <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '15px', backgroundColor: '#f9fafb' }}>
+            <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '5px', textTransform: 'uppercase' }}>{kpi.label}</p>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+              <span style={{ fontSize: '24px', fontWeight: '900', color: kpi.color }}>{kpi.value}</span>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#9ca3af' }}>{kpi.unit}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tables Section */}
+      <div style={{ marginBottom: '40px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '900', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '4px', height: '16px', backgroundColor: '#2563eb' }}></div>
+          상담자별 주요 성과 요약
+        </h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#f3f4f6', borderTop: '2px solid #374151', borderBottom: '1px solid #e5e7eb' }}>
+              <th style={{ padding: '10px', textAlign: 'left' }}>상담자명</th>
+              <th style={{ padding: '10px', textAlign: 'center' }}>전체</th>
+              <th style={{ padding: '10px', textAlign: 'center' }}>계약</th>
+              <th style={{ padding: '10px', textAlign: 'center' }}>재계약</th>
+              <th style={{ padding: '10px', textAlign: 'center' }}>미계약</th>
+              <th style={{ padding: '10px', textAlign: 'center' }}>성공률</th>
+              <th style={{ padding: '10px', textAlign: 'right' }}>매출(만)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.salespersonStatsMatrix.slice(0, 15).map((row, i) => (
+              <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <td style={{ padding: '10px', fontWeight: 'bold' }}>{row['상담자명']}</td>
+                <td style={{ padding: '10px', textAlign: 'center' }}>{row['전체']}</td>
+                <td style={{ padding: '10px', textAlign: 'center', color: '#059669', fontWeight: 'bold' }}>{row['계약']}</td>
+                <td style={{ padding: '10px', textAlign: 'center' }}>{row['재계약']}</td>
+                <td style={{ padding: '10px', textAlign: 'center', color: '#dc2626' }}>{row['미계약']}</td>
+                <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>{row['성공률']}</td>
+                <td style={{ padding: '10px', textAlign: 'right', fontWeight: 'bold' }}>{Number(row['매출합계']).toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {data.salespersonStatsMatrix.length > 15 && (
+          <p style={{ fontSize: '10px', color: '#9ca3af', marginTop: '10px', textAlign: 'center' }}>* 상위 15명의 데이터만 표시됨 (전체 {data.salespersonStatsMatrix.length}명)</p>
+        )}
+      </div>
+
+      {/* Weekly Ranking */}
+      <div style={{ marginBottom: '40px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '900', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '4px', height: '16px', backgroundColor: '#f59e0b' }}></div>
+          주차별 계약 랭킹 (TOP 3)
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
+          {Object.keys(data.weeklyTopRankings).sort().map(week => (
+            <div key={week} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px', backgroundColor: '#fff' }}>
+              <p style={{ fontSize: '10px', fontWeight: '900', color: '#374151', marginBottom: '8px', borderBottom: '1px solid #f3f4f6', paddingBottom: '3px' }}>{week}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                {data.weeklyTopRankings[week].map((r, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px' }}>
+                    <span style={{ fontWeight: 'bold' }}>{idx + 1}. {r.salesperson}</span>
+                    <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{Number(r.finalContractAmount).toLocaleString()}</span>
+                  </div>
+                ))}
+                {data.weeklyTopRankings[week].length === 0 && <p style={{ fontSize: '8px', color: '#9ca3af' }}>데이터 없음</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer / Signature Area */}
+      <div style={{ marginTop: 'auto', paddingTop: '40px', borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
+          <div>
+            <p style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '10px' }}>종합 의견</p>
+            <div style={{ width: '100%', height: '100px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#fdfdfd' }}></div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', gap: '30px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '40px' }}>담당자 확인</p>
+              <div style={{ width: '80px', borderBottom: '1px solid #1a1a1a' }}></div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '40px' }}>관리지점장</p>
+              <div style={{ width: '80px', borderBottom: '1px solid #1a1a1a' }}></div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '40px' }}>대표이사 직인</p>
+              <div style={{ width: '80px', height: '80px', border: '1px dashed #e5e7eb', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#e5e7eb' }}>
+                (인)
+              </div>
+            </div>
+          </div>
+        </div>
+        <p style={{ fontSize: '10px', color: '#9ca3af', marginTop: '40px', textAlign: 'center' }}>본 보고서는 ROBE Dashboard 관리 시스템에 의해 자동으로 생성되었습니다.</p>
+      </div>
     </div>
   );
 };
