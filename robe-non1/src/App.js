@@ -1256,7 +1256,8 @@ function Dashboard({ user }) {
       });
 
       monthRecords.forEach(r => {
-        const sp = r.salesperson || '미지정';
+        const sp = r.salesperson;
+        if (!sp || sp === '미지정') return; // Skip unspecified for trend
         if (!salespersonTrend[sp]) salespersonTrend[sp] = {};
         if (!salespersonTrend[sp][mKey]) salespersonTrend[sp][mKey] = { contract: 0, uncontract: 0, maxAmount: 0 };
 
@@ -1326,10 +1327,12 @@ function Dashboard({ user }) {
         else if (r.status === '노쇼' || r.status === '미방문') matrix[val]['노쇼']++;
       });
 
-      return Object.values(matrix).map(row => ({
-        ...row,
-        '성공률': row['전체'] > 0 ? `${Math.round((row['계약'] / row['전체']) * 100)}%` : '0%'
-      })).sort((a, b) => b['전체'] - a['전체']);
+      return Object.values(matrix)
+        .filter(row => label !== '상담자명' || row[label] !== 'Unspecified') // Filter out unassigned for salespersons
+        .map(row => ({
+          ...row,
+          '성공률': row['전체'] > 0 ? `${Math.round((row['계약'] / row['전체']) * 100)}%` : '0%'
+        })).sort((a, b) => b['전체'] - a['전체']);
     };
 
 
