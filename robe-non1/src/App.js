@@ -10,7 +10,7 @@ import {
 
 // Lucide React for icons
 
-import { ClipboardList, UserRound, ArrowUp, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2, Copy, Phone, Undo2, History, AlertTriangle, Edit, Lock, Search, ChevronDown, ChevronUp, Calendar, Settings, X, BookOpen, BarChart2, TrendingUp, TrendingDown, Minus, Trophy, RefreshCcw, User, MousePointer2, FileText, Download } from 'lucide-react';
+import { ClipboardList, UserRound, ArrowUp, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2, Copy, Phone, Undo2, History, AlertTriangle, Edit, Lock, Search, ChevronDown, ChevronUp, Calendar, Settings, X, BookOpen, BarChart2, TrendingUp, TrendingDown, Minus, Trophy, RefreshCcw, User, MousePointer2, FileText, Download, ArrowUpRight, ArrowDownRight, CheckCircle2, Maximize2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -84,6 +84,10 @@ function Dashboard({ user }) {
   // Phase 3: Consultation Modal State
   const [showConsultationModal, setShowConsultationModal] = useState(false);
   const [selectedConsultationRecord, setSelectedConsultationRecord] = useState(null);
+
+  // -- Save Success States --
+  const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
+  const [saveSuccessResult, setSaveSuccessResult] = useState(null);
   const [showRecontractModal, setShowRecontractModal] = useState(false);
   const [recontractRecord, setRecontractRecord] = useState(null);
   const [recontractForm, setRecontractForm] = useState({ salesperson: '', content: '' });
@@ -99,6 +103,12 @@ function Dashboard({ user }) {
   const recordsPerPage = 5;
 
   const [statsMonth, setStatsMonth] = useState(new Date());
+  const [lureWeekOffset, setLureWeekOffset] = useState(0);
+  const [totalWeekOffset, setTotalWeekOffset] = useState(0);
+  const [lureMonthOffset, setLureMonthOffset] = useState(0);
+  const [totalMonthOffset, setTotalMonthOffset] = useState(0);
+  const [dashboardListFilter, setDashboardListFilter] = useState(null); // { type, period, status, label }
+  const [zoomedSegment, setZoomedSegment] = useState(null); // 'lureMonth', 'lureWeek', 'totalMonth', 'totalWeek'
   const [isExporting, setIsExporting] = useState(false);
 
   const handleDownloadReport = async () => {
@@ -131,6 +141,23 @@ function Dashboard({ user }) {
       alert('보고서 생성 중 오류가 발생했습니다.');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleExportDetailReport = async (element) => {
+    if (!element) return;
+    try {
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Detail_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (e) {
+      console.error(e);
+      alert('출력 중 오류가 발생했습니다.');
     }
   };
   const [searchTerm, setSearchTerm] = useState('');
@@ -227,7 +254,13 @@ function Dashboard({ user }) {
   const handleCustomerFormChange = (e) => {
     const { name, value, type, checked } = e.target;
     setNewCustomerForm(prev => {
-      const val = type === 'checkbox' ? checked : value;
+      let val = type === 'checkbox' ? checked : value;
+
+      // Handle comma formatting for currency fields
+      if (name === 'finalContractAmount') {
+        val = unformatCommas(value);
+      }
+
       let updated = { ...prev, [name]: val };
 
       // Auto-sync DB Creator if "Same as Consultant" is checked
@@ -267,12 +300,12 @@ function Dashboard({ user }) {
     setSelectedConsultationRecord(record);
     setShowConsultationModal(true);
     // Reset form
-    setNewCustomerForm(prev => ({
-      ...prev,
-      customerName: '', customerContact: '', reservationDate: '', reservationTime: '', memo: '',
-      salesperson: '', status: '계약', finalContractAmount: '', consultationContent: '', reason: '',
-      mode: 'pending', isImmediateConsult: false
-    }));
+    const today = new Date().toISOString().split('T')[0];
+    setNewCustomerForm({
+      branch: '도산', source: '워킹', customerName: '', customerContact: '', reservationDate: today, reservationTime: '', memo: '',
+      salesperson: '', status: '계약', finalContractAmount: '', contractAmount: '', consultationContent: '',
+      reason: '', mode: 'pending', isImmediateConsult: false, isProcessingExisting: false, isSameAsConsultant: false, dbCreator: '', tmPerson: ''
+    });
   };
 
   const handleAddCustomer = async (e) => {
@@ -401,18 +434,35 @@ function Dashboard({ user }) {
         await addDoc(collection(db, `artifacts/${appId}/public/data/customer_records`), newRecordData);
       }
 
-      // Reset Form after success
       setNewCustomerForm(prev => ({
         ...prev,
         customerName: '', customerContact: '', reservationDate: new Date().toISOString().split('T')[0], reservationTime: '14:00', memo: '',
-        salesperson: '', status: '대기', finalContractAmount: '', consultationContent: '', reason: '',
+        salesperson: '', status: '대기', finalContractAmount: '', contractAmount: '', consultationContent: '', reason: '',
         mode: 'pending', isImmediateConsult: false, isRecontracted: false,
-        isProcessingExisting: false, existingRecordId: null // Reset linking flags
+        isProcessingExisting: false, existingRecordId: null
       }));
       setDuplicateLeads([]);
       setShowDuplicateWarning(false);
       setError(null);
-      alert(newCustomerForm.isProcessingExisting ? '상담 기록이 업데이트되었습니다.' : '신규 DB가 성공적으로 등록되었습니다.');
+
+      // Show summary for anything other than 'pending' registration
+      if (newCustomerForm.mode !== 'pending') {
+        const summaryData = {
+          branch: newCustomerForm.branch,
+          status: finalStatus,
+          customerName: newCustomerForm.customerName,
+          source: newCustomerForm.source,
+          reservationDate: newCustomerForm.reservationDate,
+          finalContractAmount: newCustomerForm.finalContractAmount,
+          contractAmount: newCustomerForm.contractAmount,
+          consultationContent: newCustomerForm.consultationContent
+        };
+        setSaveSuccessResult(summaryData);
+        setShowSaveSuccessModal(true);
+      } else {
+        alert('신규 DB가 대기 리스트에 등록되었습니다.');
+      }
+
       if (topOfPageRef.current) topOfPageRef.current.scrollIntoView({ behavior: 'smooth' });
     } catch (e) {
       console.error(e);
@@ -622,7 +672,20 @@ function Dashboard({ user }) {
 
       setShowConsultationModal(false);
       setSelectedConsultationRecord(null);
-      alert('상담 결과가 저장되었습니다.');
+
+      // Prepare data for summary modal
+      const summaryData = {
+        branch: currentData.branch || '정보없음',
+        status: data.status,
+        customerName: currentData.customerName || '정보없음',
+        source: currentData.source || '정보없음',
+        reservationDate: currentData.reservationDate || '',
+        finalContractAmount: data.finalContractAmount,
+        contractAmount: data.contractAmount,
+        consultationContent: data.consultationContent
+      };
+      setSaveSuccessResult(summaryData);
+      setShowSaveSuccessModal(true);
     } catch (e) {
       console.error("Error saving consultation:", e);
       setError("상담 결과 저장 중 오류가 발생했습니다.");
@@ -1021,6 +1084,120 @@ function Dashboard({ user }) {
       monthTrend.push({ month: mKey, total: 0 });
     }
 
+    const getFilteredStats = (offset, periodType, isLureOnly = false) => {
+      const now = new Date();
+      let start, end;
+
+      if (periodType === 'week') {
+        const currentBatch = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (offset * 7));
+        const day = currentBatch.getDay() || 7;
+        start = new Date(currentBatch.getFullYear(), currentBatch.getMonth(), currentBatch.getDate() - day + 1);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+      } else {
+        start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0, 23, 59, 59, 999);
+      }
+
+      const filtered = allRecords.filter(r => {
+        const d = r.reservationDate ? new Date(r.reservationDate) : (r.createdAt?.toDate ? r.createdAt.toDate() : null);
+        if (!d) return false;
+        const matchesDate = d >= start && d <= end;
+        if (!matchesDate) return false;
+        if (isLureOnly) return r.source === '루어';
+        return true;
+      });
+
+      const stats = { total: 0, contracted: 0, uncontracted: 0, noshow: 0, label: '', records: filtered };
+      filtered.forEach(r => {
+        stats.total++;
+        if (r.status === '계약') stats.contracted++;
+        else if (r.status === '미계약') stats.uncontracted++;
+        else if (r.status === '노쇼' || r.status === '미방문') stats.noshow++;
+      });
+
+      stats.contractedPct = stats.total > 0 ? ((stats.contracted / stats.total) * 100).toFixed(1) : 0;
+      stats.uncontractedPct = stats.total > 0 ? ((stats.uncontracted / stats.total) * 100).toFixed(1) : 0;
+      stats.noshowPct = stats.total > 0 ? ((stats.noshow / stats.total) * 100).toFixed(1) : 0;
+
+      if (periodType === 'week') {
+        const weekNum = Math.floor((start.getDate() + 6) / 7);
+        stats.label = `${start.getMonth() + 1}월 ${weekNum}주차`;
+      } else {
+        stats.label = `${start.getFullYear()}년 ${start.getMonth() + 1}월`;
+      }
+      stats.isFuture = start > now;
+      stats.isNow = start <= now && end >= now;
+
+      return stats;
+    };
+
+    const getTrend = (current, prev) => {
+      const calc = (curVal, preVal) => {
+        if (!preVal) return curVal > 0 ? '+100%' : '0%';
+        const diff = ((curVal - preVal) / preVal) * 100;
+        return `${diff > 0 ? '+' : ''}${diff.toFixed(0)}%`;
+      };
+      return {
+        total: calc(current.total, prev.total),
+        contracted: calc(current.contracted, prev.contracted),
+        uncontracted: calc(current.uncontracted, prev.uncontracted),
+        noshow: calc(current.noshow, prev.noshow)
+      };
+    };
+
+    const lureWeekStats = getFilteredStats(lureWeekOffset, 'week', true);
+    const lureMonthStats = getFilteredStats(lureMonthOffset, 'month', true);
+    const totalWeekStats = getFilteredStats(totalWeekOffset, 'week', false);
+    const totalMonthStats = getFilteredStats(totalMonthOffset, 'month', false);
+
+    // Trend comparisons: Weekly compare with same week last month (-4), Monthly compare with prev month (-1)
+    const lureWeekPrev = getFilteredStats(lureWeekOffset - 4, 'week', true);
+    const lureMonthPrev = getFilteredStats(lureMonthOffset - 1, 'month', true);
+    const totalWeekPrev = getFilteredStats(totalWeekOffset - 4, 'week', false);
+    const totalMonthPrev = getFilteredStats(totalMonthOffset - 1, 'month', false);
+
+    const lureWeekTrend = getTrend(lureWeekStats, lureWeekPrev);
+    const lureMonthTrend = getTrend(lureMonthStats, lureMonthPrev);
+    const totalWeekTrend = getTrend(totalWeekStats, totalWeekPrev);
+    const totalMonthTrend = getTrend(totalMonthStats, totalMonthPrev);
+
+    const getTrendHistory = (offset, periodType, isLureOnly, count = 6) => {
+      const history = [];
+      for (let i = count - 1; i >= 0; i--) {
+        history.push(getFilteredStats(offset - i, periodType, isLureOnly));
+      }
+      return history;
+    };
+
+    const lureWeekHistory = getTrendHistory(lureWeekOffset, 'week', true);
+    const lureMonthHistory = getTrendHistory(lureMonthOffset, 'month', true);
+    const totalWeekHistory = getTrendHistory(totalWeekOffset, 'week', false);
+    const totalMonthHistory = getTrendHistory(totalMonthOffset, 'month', false);
+
+    const lureTrend = { diff: 0, status: 'stable' };
+    const totalRecordsCurrentMonth = allRecords.filter(r => {
+      const d = r.reservationDate ? new Date(r.reservationDate) : (r.createdAt?.toDate ? r.createdAt.toDate() : null);
+      return d && d.getFullYear() === statsMonth.getFullYear() && d.getMonth() === statsMonth.getMonth();
+    }).length;
+
+    const lastMonthDate = new Date(statsMonth.getFullYear(), statsMonth.getMonth() - 1, 1);
+    const totalRecordsLastMonth = allRecords.filter(r => {
+      const d = r.reservationDate ? new Date(r.reservationDate) : (r.createdAt?.toDate ? r.createdAt.toDate() : null);
+      return d && d.getFullYear() === lastMonthDate.getFullYear() && d.getMonth() === lastMonthDate.getMonth();
+    }).length;
+
+    const lastMonthLureTotal = allRecords.filter(r => {
+      const d = r.reservationDate ? new Date(r.reservationDate) : (r.createdAt?.toDate ? r.createdAt.toDate() : null);
+      return d && r.source === '루어' && d.getFullYear() === lastMonthDate.getFullYear() && d.getMonth() === lastMonthDate.getMonth();
+    }).length;
+
+    if (lastMonthLureTotal > 0) {
+      lureTrend.diff = lureStats.total - lastMonthLureTotal;
+      lureTrend.status = lureTrend.diff > 0 ? 'up' : lureTrend.diff < 0 ? 'down' : 'stable';
+    }
+
     allRecords.forEach(r => {
       const d = r.reservationDate ? new Date(r.reservationDate) : (r.createdAt?.toDate ? r.createdAt.toDate() : null);
       if (!d) return;
@@ -1186,6 +1363,9 @@ function Dashboard({ user }) {
       lureMonthlyStats,
       monthTrend,
       salespersonBranchMap,
+      totalRecordsCurrentMonth,
+      totalRecordsLastMonth,
+      lureTrend,
       // Phase 3 Matrices
       sourceStatsMatrix,
       branchStatsMatrix,
@@ -1193,8 +1373,20 @@ function Dashboard({ user }) {
       salespersonTrend,
       targetMonths: targetMonths.map(d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`),
       weeklyTopRankings,
+      lureWeekStats,
+      lureMonthStats,
+      totalWeekStats,
+      totalMonthStats,
+      lureWeekTrend,
+      lureMonthTrend,
+      totalWeekTrend,
+      totalMonthTrend,
+      lureWeekHistory,
+      lureMonthHistory,
+      totalWeekHistory,
+      totalMonthHistory
     };
-  }, [customerRecords, statsMonth]);
+  }, [customerRecords, statsMonth, lureWeekOffset, lureMonthOffset, totalWeekOffset, totalMonthOffset]);
 
 
 
@@ -1284,98 +1476,164 @@ function Dashboard({ user }) {
         {/* --- 1. Dashboard Tab (Stats & Charts) --- */}
         {activeTab === 'contract_dashboard' && (
           <div className="space-y-6">
-            {/* Full-width Trend Chart Section */}
-            <div className="bg-white p-6 rounded-2xl shadow-lg">
-              <h2 className="text-xl font-semibold text-gray-700 mb-4 font-bold border-b pb-2">📈 월별 미계약 건수 추이</h2>
-              <div className="w-full relative h-[300px]">
-                {dashboardData.monthTrend.length > 0 ? (
-                  <MonthlyLineChart data={dashboardData.monthTrend} />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-400">데이터 없음</div>
-                )}
-                <div className="absolute top-4 right-4 text-sm text-gray-500 bg-white bg-opacity-80 p-2 rounded shadow-sm">
-                  <span className="font-bold text-gray-800 text-lg">{dashboardData.totalRecordsCurrentMonth}</span>
-                  <span className="ml-1">건 (이번 달)</span>
-                </div>
-              </div>
-            </div>
+            {/* Dashboard Container: Lure(Blue) and Total(Red) nested structure */}
+            <div className="flex flex-col xl:flex-row gap-6 w-full items-stretch">
+              {/* Lure Section (BLUE) */}
+              <div className="flex-1 flex flex-col gap-4 bg-[#0F172A] p-6 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-[100px]"></div>
 
-            {/* Top KPIs Summary Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-              {/* Lure (Main) KPI Card */}
-              <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-8 rounded-3xl shadow-xl text-white border-b-8 border-blue-800 flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <p className="text-[12px] font-black opacity-80 uppercase tracking-widest mb-1">루어 온라인 DB 성과 (선택 월)</p>
-                      <div className="flex items-end gap-2">
-                        <h3 className="text-5xl font-black tracking-tighter">{dashboardData.lureStats.total}</h3>
-                        <span className="text-xl font-bold opacity-60 mb-1">건</span>
-                      </div>
-                    </div>
-                    <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-md">
-                      <MousePointer2 className="w-10 h-10 text-white" />
-                    </div>
-                  </div>
-                  <div className="space-y-5">
-                    <div className="flex justify-between items-end">
-                      <span className="text-[15px] font-bold opacity-90">계약 성공률</span>
-                      <span className="text-4xl font-black">{dashboardData.lureStats.total > 0 ? ((dashboardData.lureStats.contracted / dashboardData.lureStats.total) * 100).toFixed(1) : 0}%</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-white/20 rounded-full overflow-hidden shadow-inner">
-                      <div className="h-full bg-white transition-all duration-1000 ease-out" style={{ width: `${dashboardData.lureStats.total > 0 ? (dashboardData.lureStats.contracted / dashboardData.lureStats.total) * 100 : 0}% ` }}></div>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-between text-[13px] font-black opacity-90 mt-10 pt-6 border-t border-white/10">
-                  <div className="flex flex-col">
-                    <span className="opacity-50 text-[10px] uppercase mb-1">계약 완료</span>
-                    <span className="text-xl">{dashboardData.lureStats.contracted}건</span>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="opacity-50 text-[10px] uppercase mb-1">미계약 + 노쇼</span>
-                    <span className="text-xl">{dashboardData.lureStats.uncontracted + dashboardData.lureStats.noshow}건</span>
-                  </div>
+                <h2 className="text-lg font-black text-white px-2 flex items-center gap-2">
+                  <div className="w-1.5 h-5 bg-blue-500 rounded-full"></div>
+                  루어 DB 성과 현황
+                </h2>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
+                  <SegmentContainer
+                    title="월간 루어"
+                    stats={dashboardData.lureMonthStats}
+                    trend={dashboardData.lureMonthTrend}
+                    color="blue"
+                    onPrev={() => setLureMonthOffset(p => p - 1)}
+                    onNext={() => setLureMonthOffset(p => p + 1)}
+                    onMetricClick={(status, period) => setDashboardListFilter({ type: 'lure', period, status, label: `${dashboardData.lureMonthStats.label} 루어`, records: dashboardData.lureMonthStats.records })}
+                    periodType="month"
+                    history={dashboardData.lureMonthHistory}
+                    onZoom={() => setZoomedSegment('lureMonth')}
+                  />
+                  <SegmentContainer
+                    title="주간 루어"
+                    stats={dashboardData.lureWeekStats}
+                    trend={dashboardData.lureWeekTrend}
+                    color="blue"
+                    onPrev={() => setLureWeekOffset(p => p - 1)}
+                    onNext={() => setLureWeekOffset(p => p + 1)}
+                    onMetricClick={(status, period) => setDashboardListFilter({ type: 'lure', period, status, label: `${dashboardData.lureWeekStats.label} 루어`, records: dashboardData.lureWeekStats.records })}
+                    periodType="week"
+                    history={dashboardData.lureWeekHistory}
+                    onZoom={() => setZoomedSegment('lureWeek')}
+                  />
                 </div>
               </div>
 
-              {/* General DB Stats Summary Card */}
-              <div className="bg-white p-8 rounded-3xl shadow-lg border border-gray-100 flex flex-col justify-between">
-                <div className="flex justify-between items-center mb-8">
-                  <h4 className="text-[18px] font-black text-gray-800">월간 통합 예약 현황</h4>
-                  <Calendar className="w-6 h-6 text-gray-300" />
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-50">
-                    <p className="text-[11px] font-black text-blue-400 uppercase tracking-wider mb-2">전체 DB 예약</p>
-                    <p className="text-3xl font-black text-blue-800">{dashboardData.totalDBStats.total}건</p>
-                  </div>
-                  <div className="p-5 bg-emerald-50/50 rounded-2xl border border-emerald-50">
-                    <p className="text-[11px] font-black text-emerald-400 uppercase tracking-wider mb-2">계약 성공</p>
-                    <p className="text-3xl font-black text-emerald-800">{dashboardData.totalDBStats.contracted}건</p>
-                  </div>
-                  <div className="p-5 bg-rose-50/50 rounded-2xl border border-rose-50">
-                    <p className="text-[11px] font-black text-rose-400 uppercase tracking-wider mb-2">미계약 건수</p>
-                    <p className="text-3xl font-black text-rose-800">{dashboardData.totalDBStats.uncontracted}건</p>
-                  </div>
-                  <div className="p-5 bg-gray-50/50 rounded-2xl border border-gray-100">
-                    <p className="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">노쇼 합계</p>
-                    <p className="text-3xl font-black text-gray-700">{dashboardData.lureStats.noshow}건</p>
-                  </div>
-                </div>
-                <div className="mt-8 p-4 bg-gray-50 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
-                      <BarChart2 className="w-4 h-4 text-gray-400" />
-                    </div>
-                    <span className="text-[12px] font-bold text-gray-500">전월 대비 예약 증감</span>
-                  </div>
-                  <span className={`text - sm font - black ${dashboardData.totalRecordsCurrentMonth - dashboardData.totalRecordsLastMonth >= 0 ? 'text-blue-500' : 'text-red-500'} `}>
-                    {dashboardData.totalRecordsCurrentMonth - dashboardData.totalRecordsLastMonth >= 0 ? '+' : ''}{dashboardData.totalRecordsCurrentMonth - dashboardData.totalRecordsLastMonth} 건
-                  </span>
+              {/* Total Section (RED) */}
+              <div className="flex-1 flex flex-col gap-4 bg-[#450A0A] p-6 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-rose-600/10 rounded-full blur-[100px]"></div>
+
+                <h2 className="text-lg font-black text-white px-2 flex items-center gap-2">
+                  <div className="w-1.5 h-5 bg-rose-500 rounded-full"></div>
+                  전체 통합 성과 요약
+                </h2>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
+                  <SegmentContainer
+                    title="월간 통합"
+                    stats={dashboardData.totalMonthStats}
+                    trend={dashboardData.totalMonthTrend}
+                    color="red"
+                    onPrev={() => setTotalMonthOffset(p => p - 1)}
+                    onNext={() => setTotalMonthOffset(p => p + 1)}
+                    onMetricClick={(status, period) => setDashboardListFilter({ type: 'total', period, status, label: `${dashboardData.totalMonthStats.label} 통합`, records: dashboardData.totalMonthStats.records })}
+                    periodType="month"
+                    history={dashboardData.totalMonthHistory}
+                    onZoom={() => setZoomedSegment('totalMonth')}
+                  />
+                  <SegmentContainer
+                    title="주간 통합"
+                    stats={dashboardData.totalWeekStats}
+                    trend={dashboardData.totalWeekTrend}
+                    color="red"
+                    onPrev={() => setTotalWeekOffset(p => p - 1)}
+                    onNext={() => setTotalWeekOffset(p => p + 1)}
+                    onMetricClick={(status, period) => setDashboardListFilter({ type: 'total', period, status, label: `${dashboardData.totalWeekStats.label} 통합`, records: dashboardData.totalWeekStats.records })}
+                    periodType="week"
+                    history={dashboardData.totalWeekHistory}
+                    onZoom={() => setZoomedSegment('totalWeek')}
+                  />
                 </div>
               </div>
+
+              {/* Segment Zoom Modal */}
+              {zoomedSegment && (
+                <SegmentZoomModal
+                  type={zoomedSegment}
+                  dashboardData={dashboardData}
+                  onClose={() => setZoomedSegment(null)}
+                  onPrev={() => {
+                    if (zoomedSegment === 'lureMonth') setLureMonthOffset(p => p - 1);
+                    else if (zoomedSegment === 'lureWeek') setLureWeekOffset(p => p - 1);
+                    else if (zoomedSegment === 'totalMonth') setTotalMonthOffset(p => p - 1);
+                    else if (zoomedSegment === 'totalWeek') setTotalWeekOffset(p => p - 1);
+                  }}
+                  onNext={() => {
+                    if (zoomedSegment === 'lureMonth') setLureMonthOffset(p => p + 1);
+                    else if (zoomedSegment === 'lureWeek') setLureWeekOffset(p => p + 1);
+                    else if (zoomedSegment === 'totalMonth') setTotalMonthOffset(p => p + 1);
+                    else if (zoomedSegment === 'totalWeek') setTotalWeekOffset(p => p + 1);
+                  }}
+                  onMetricClick={(status, period) => {
+                    const seg = zoomedSegment.startsWith('lure') ? 'lure' : 'total';
+                    const baseStats = dashboardData[`${zoomedSegment}Stats`];
+                    setDashboardListFilter({ type: seg, period, status, label: `${baseStats.label} ${seg === 'lure' ? '루어' : '통합'}`, records: baseStats.records });
+                  }}
+                />
+              )}
             </div>
+
+            {/* Dashboard List Detail (Appear on click) */}
+            {dashboardListFilter && (
+              <DetailedDashboardList
+                filter={dashboardListFilter}
+                records={dashboardListFilter.records}
+                onClose={() => setDashboardListFilter(null)}
+                onRecordClick={(r) => { setSelectedConsultationRecord(r); setShowConsultationModal(true); }}
+                onExport={handleExportDetailReport}
+              />
+            )}
+
+            {/* Weekly Ranking Section (Moved here) */}
+            <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100">
+              <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center">
+                <Trophy className="w-6 h-6 text-yellow-500 mr-2" />
+                주차별 계약 랭킹 (Top 3)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Object.keys(dashboardData.weeklyTopRankings).sort().map(week => (
+                  <div key={week} className="bg-gray-50/50 rounded-2xl p-5 border border-gray-100">
+                    <h4 className="font-black text-gray-700 mb-4 border-b border-gray-200/50 pb-2 flex justify-between items-center">
+                      <span className="bg-gray-800 text-white px-2 py-0.5 rounded text-[10px] uppercase">{week}</span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">최고 계약금액 순</span>
+                    </h4>
+                    <div className="space-y-4">
+                      {dashboardData.weeklyTopRankings[week].map((r, idx) => (
+                        <div
+                          key={r.id}
+                          onClick={() => { setSelectedConsultationRecord(r); setShowConsultationModal(true); }}
+                          className="flex items-center justify-between group cursor-pointer hover:bg-white p-1 rounded-xl transition-all"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-[12px] font-black text-white shadow-sm
+                              ${idx === 0 ? 'bg-yellow-400 ring-4 ring-yellow-50' : idx === 1 ? 'bg-slate-400' : 'bg-orange-400'}
+                            `}>
+                              {idx + 1}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-black text-[14px] text-gray-800">{r.salesperson}</span>
+                              <span className="text-[10px] font-bold text-gray-400">{r.customerName}</span>
+                            </div>
+                          </div>
+                          <span className="font-black text-blue-600 text-[14px] bg-blue-50 px-2 py-1 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            {Number(r.finalContractAmount).toLocaleString()}원
+                          </span>
+                        </div>
+                      ))}
+                      {dashboardData.weeklyTopRankings[week].length === 0 && <div className="text-gray-400 text-xs font-bold text-center py-4 bg-white/50 rounded-xl border border-dashed border-gray-200">기록 없음</div>}
+                    </div>
+                  </div>
+                ))}
+                {Object.keys(dashboardData.weeklyTopRankings).length === 0 && <div className="text-gray-400 col-span-3 text-center py-10 font-bold">이번 달 계약 데이터가 없습니다.</div>}
+              </div>
+            </div>
+
 
             {/* Charts Section - Reorganized Separated */}
             <div className="flex flex-col gap-6 mb-6">
@@ -1420,45 +1678,7 @@ function Dashboard({ user }) {
                 setSalespersonSearch={setSalespersonSearch}
               />
 
-              {/* Weekly Ranking Section (Integrated) */}
-              <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100">
-                <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center">
-                  <Trophy className="w-6 h-6 text-yellow-500 mr-2" />
-                  주차별 계약 랭킹 (Top 3)
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {Object.keys(dashboardData.weeklyTopRankings).sort().map(week => (
-                    <div key={week} className="bg-gray-50/50 rounded-2xl p-5 border border-gray-100">
-                      <h4 className="font-black text-gray-700 mb-4 border-b border-gray-200/50 pb-2 flex justify-between items-center">
-                        <span className="bg-gray-800 text-white px-2 py-0.5 rounded text-[10px] uppercase">{week}</span>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">최고 계약금액 순</span>
-                      </h4>
-                      <div className="space-y-4">
-                        {dashboardData.weeklyTopRankings[week].map((r, idx) => (
-                          <div key={r.id} className="flex items-center justify-between group">
-                            <div className="flex items-center gap-3">
-                              <div className={`w - 7 h - 7 rounded - xl flex items - center justify - center text - [12px] font - black text - white shadow - sm
-                              ${idx === 0 ? 'bg-yellow-400 ring-4 ring-yellow-50' : idx === 1 ? 'bg-slate-400' : 'bg-orange-400'}
-    `}>
-                                {idx + 1}
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="font-black text-[14px] text-gray-800">{r.salesperson}</span>
-                                <span className="text-[10px] font-bold text-gray-400">{r.customerName}</span>
-                              </div>
-                            </div>
-                            <span className="font-black text-blue-600 text-[14px] bg-blue-50 px-2 py-1 rounded-lg">
-                              {Number(r.finalContractAmount).toLocaleString()}만
-                            </span>
-                          </div>
-                        ))}
-                        {dashboardData.weeklyTopRankings[week].length === 0 && <div className="text-gray-400 text-xs font-bold text-center py-4 bg-white/50 rounded-xl border border-dashed border-gray-200">기록 없음</div>}
-                      </div>
-                    </div>
-                  ))}
-                  {Object.keys(dashboardData.weeklyTopRankings).length === 0 && <div className="text-gray-400 col-span-3 text-center py-10 font-bold">이번 달 계약 데이터가 없습니다.</div>}
-                </div>
-              </div>
+
 
               {/* Salesperson Overview Table */}
               <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100">
@@ -1759,7 +1979,7 @@ function Dashboard({ user }) {
                       {/* Customer Info */}
                       <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">고객명</label>
-                        <input type="text" name="customerName" value={newCustomerForm.customerName} onChange={handleCustomerFormChange} required className="w-full p-3 border border-gray-300 rounded-xl text-sm font-bold" placeholder="고객 이름" />
+                        <input type="text" name="customerName" value={newCustomerForm.customerName} onChange={handleCustomerFormChange} required className="w-full p-3 border border-gray-300 rounded-xl text-sm font-bold" placeholder="신랑이름/신부이름" />
                       </div>
                       <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">연락처</label>
@@ -1824,7 +2044,7 @@ function Dashboard({ user }) {
                             name="dbCreator"
                             value={newCustomerForm.dbCreator}
                             onChange={handleCustomerFormChange}
-                            placeholder="입력자 이름"
+                            placeholder="작성자 이름"
                             className="w-full p-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-blue-400 outline-none"
                           />
                         </div>
@@ -1834,14 +2054,28 @@ function Dashboard({ user }) {
                     {newCustomerForm.mode === 'contracted' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-semibold text-blue-900 mb-1">최종결제금액 (순위정산용)</label>
-                          <input type="number" name="finalContractAmount" value={newCustomerForm.finalContractAmount} onChange={handleCustomerFormChange} className="w-full p-2 border border-blue-200 rounded-lg" placeholder="숫자만 입력 (단위: 만원)" />
+                          <label className="block text-sm font-semibold text-blue-900 mb-1">최종결제금액 (순위정산용) 단위:원</label>
+                          <input type="text" name="finalContractAmount" value={formatWithCommas(newCustomerForm.finalContractAmount)} onChange={handleCustomerFormChange} className="w-full p-2 border border-blue-200 rounded-lg font-bold" placeholder="원화단위 입력 예) 990,000" />
                         </div>
                         <div className="md:col-span-2">
                           <label className="block text-sm font-semibold text-blue-900 mb-1">상세 계약금액/메모</label>
-                          <input type="text" name="contractAmount" value={newCustomerForm.contractAmount} onChange={handleCustomerFormChange} className="w-full p-2 border border-blue-200 rounded-lg mb-3" placeholder="최종금액 백데이터 정보 메모" />
+                          <textarea
+                            name="contractAmount"
+                            value={newCustomerForm.contractAmount}
+                            onChange={handleCustomerFormChange}
+                            rows="6"
+                            className="w-full p-2 border border-blue-200 rounded-lg mb-3 text-sm leading-relaxed"
+                            placeholder={`예) 하드 (219) 조끼 (40)\n기성대체  (30)\n정장1 조끼1 셔츠2 구두1 대여2\n총 289(28,9)-317,9\n박 30\n계 287,9\n잔 x`}
+                          />
                           <label className="block text-sm font-semibold text-blue-900 mb-1">계약과정 및 상담내용 작성</label>
-                          <textarea name="consultationContent" value={newCustomerForm.consultationContent} onChange={handleCustomerFormChange} rows="3" className="w-full p-2 border border-blue-200 rounded-lg" placeholder="상담시간 60분 같은 내용도 추가"></textarea>
+                          <textarea
+                            name="consultationContent"
+                            value={newCustomerForm.consultationContent}
+                            onChange={handleCustomerFormChange}
+                            rows="4"
+                            className="w-full p-2 border border-blue-200 rounded-lg text-sm"
+                            placeholder="예) 상담내용 + 체촌여부 + 상담시간 + 반도진행 여부 등"
+                          />
                         </div>
                       </div>
                     )}
@@ -1874,24 +2108,24 @@ function Dashboard({ user }) {
                 )}
 
                 <div className="pt-6 border-t border-gray-100">
-                  <button type="submit" className={`w - full py - 4 text - white font - black rounded - 2xl shadow - xl transition - all transform active: scale - 95 flex items - center justify - center text - lg ${newCustomerForm.mode === 'contracted' ? 'bg-blue-600 hover:bg-blue-700' :
+                  <button type="submit" className={`w-full py-4 text-white font-black rounded-2xl shadow-xl transition-all transform active:scale-95 flex items-center justify-center text-lg ${newCustomerForm.mode === 'contracted' ? 'bg-blue-600 hover:bg-blue-700' :
                     newCustomerForm.mode === 'uncontracted' ? 'bg-red-500 hover:bg-red-600' :
                       newCustomerForm.mode === 'noshow' ? 'bg-black hover:bg-gray-800' :
                         newCustomerForm.isProcessingExisting ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-red-600 hover:bg-red-700'
-                    } `}>
+                    }`}>
                     {newCustomerForm.isProcessingExisting ? (
                       <History className="w-6 h-6 mr-2" />
                     ) : (
                       <Plus className="w-6 h-6 mr-2" />
                     )}
                     {newCustomerForm.isProcessingExisting ? (
-                      newCustomerForm.mode === 'contracted' ? '계약 완료 저장' :
-                        newCustomerForm.mode === 'uncontracted' ? '미계약 저장' :
-                          newCustomerForm.mode === 'noshow' ? '노쇼 저장' : '상담 결과 저장'
+                      newCustomerForm.mode === 'contracted' ? '계약 완료 및 등록' :
+                        newCustomerForm.mode === 'uncontracted' ? '미계약 건 등록' :
+                          newCustomerForm.mode === 'noshow' ? '노쇼(미방문) 등록' : '상담 결과 저장'
                     ) : (
                       newCustomerForm.mode === 'contracted' ? '계약 완료 및 등록' :
-                        newCustomerForm.mode === 'uncontracted' ? '미계약 및 등록' :
-                          newCustomerForm.mode === 'noshow' ? '노쇼 및 등록' : '새로운 고객 등록하기'
+                        newCustomerForm.mode === 'uncontracted' ? '미계약 건 등록' :
+                          newCustomerForm.mode === 'noshow' ? '노쇼(미방문) 등록' : '새로운 고객 등록하기'
                     )}
                   </button>
                 </div>
@@ -2197,9 +2431,436 @@ function Dashboard({ user }) {
           />
         )
       }
+      {
+        showSaveSuccessModal && saveSuccessResult && (
+          <SaveSuccessModal
+            result={saveSuccessResult}
+            onClose={() => {
+              setShowSaveSuccessModal(false);
+              setSaveSuccessResult(null);
+            }}
+          />
+        )
+      }
     </div >
   );
 }
+const PerformanceMetric = ({ label, value, pct, trend, onClick, color = 'blue', isZoomed = false }) => {
+  const isUp = trend && trend.includes('+') && trend !== '+0%';
+  const isDown = trend && trend.includes('-') && trend !== '-0%';
+
+  return (
+    <div
+      onClick={onClick}
+      className={`group cursor-pointer ${isZoomed ? 'p-6' : 'p-2.5'} rounded-2xl transition-all flex flex-col items-center border border-transparent hover:border-white/20 hover:bg-white/5 active:scale-95`}
+    >
+      <div className="flex flex-col items-center mb-1 w-full">
+        <span className={`${isZoomed ? 'text-sm mb-1.5' : 'text-[9px] mb-0.5'} font-black opacity-40 uppercase tracking-tighter`}>{label}</span>
+        {trend && (
+          <span className={`${isZoomed ? 'text-[11px] px-2 py-1' : 'text-[8px] px-1 py-0.5'} font-black rounded-lg ${isUp ? 'bg-emerald-500/20 text-emerald-400' : isDown ? 'bg-rose-500/20 text-rose-400' : 'bg-gray-500/20 text-gray-400'}`}>
+            {trend}
+          </span>
+        )}
+      </div>
+      <div className="flex items-baseline gap-0.5 justify-center">
+        <span className={`${isZoomed ? 'text-5xl' : 'text-xl'} font-black group-hover:text-white transition-colors`}>{value}</span>
+        <span className={`${isZoomed ? 'text-lg' : 'text-[10px]'} font-bold opacity-30`}>건</span>
+      </div>
+      {pct !== undefined && pct !== null && (
+        <span className={`${isZoomed ? 'text-base mt-1' : 'text-[9px]'} font-black ${color === 'blue' ? 'text-blue-300' : 'text-rose-300'} opacity-60`}>{pct}%</span>
+      )}
+    </div>
+  );
+};
+
+const SegmentContainer = ({ title, stats, trend, history, color = 'blue', onPrev, onNext, onMetricClick, onZoom, isZoomed = false, periodType }) => {
+  const isBlue = color === 'blue';
+  const isWeekly = periodType === 'week';
+
+  // Weekly has lighter/different background for distinction, and no heavy shadow
+  const bgClass = isBlue
+    ? (isWeekly ? 'bg-blue-600/40 border-blue-500/30' : 'bg-indigo-900 border-indigo-800 shadow-2xl')
+    : (isWeekly ? 'bg-rose-600/40 border-rose-500/30' : 'bg-rose-900 border-rose-800 shadow-2xl');
+
+  return (
+    <div className={`${isZoomed ? 'p-10' : 'p-4'} rounded-[2rem] border transition-all ${bgClass} text-white relative`}>
+      <div className={`flex justify-between items-center ${isZoomed ? 'mb-8' : 'mb-3'} px-1`}>
+        <div className="flex items-center gap-3">
+          <h4 className={`${isZoomed ? 'text-2xl' : 'text-[12px]'} font-black opacity-90 flex items-center gap-1.5 cursor-pointer hover:text-white/80`} onClick={onZoom}>
+            <span className={`${isZoomed ? 'w-2 h-6' : 'w-1 h-3'} rounded-full ${isWeekly ? 'bg-white/40' : 'bg-white'}`}></span>
+            {title.replace('MONTHLY', '월간').replace('WEEKLY', '주간')}
+            {!isZoomed && <Maximize2 className="w-3 h-3 opacity-40 ml-1" />}
+          </h4>
+        </div>
+        <div className={`flex items-center ${isZoomed ? 'gap-4 px-4 py-1.5' : 'gap-1.5 px-2 py-0.5'} bg-black/20 rounded-lg border border-white/5`}>
+          <button onClick={onPrev} className="hover:text-white/60"><ChevronLeft className={isZoomed ? "w-6 h-6" : "w-3.5 h-3.5"} /></button>
+          <span className={`${isZoomed ? 'text-lg min-w-[120px]' : 'text-[10px] min-w-[65px]'} font-black text-center`}>{stats.label}</span>
+          <button onClick={onNext} disabled={stats.isNow || stats.isFuture} className="hover:text-white/60 disabled:opacity-20"><ChevronRight className={isZoomed ? "w-6 h-6" : "w-3.5 h-3.5"} /></button>
+        </div>
+      </div>
+
+      <div className={`${isZoomed ? 'grid grid-cols-4 gap-6' : 'grid grid-cols-4 gap-1'}`}>
+        <PerformanceMetric
+          label="총 DB건"
+          value={stats.total}
+          trend={trend.total}
+          onClick={() => onMetricClick('total', periodType)}
+          color={color}
+          isZoomed={isZoomed}
+        />
+        <PerformanceMetric
+          label="계약"
+          value={stats.contracted}
+          pct={stats.contractedPct}
+          trend={trend.contracted}
+          onClick={() => onMetricClick('계약', periodType)}
+          color={color}
+          isZoomed={isZoomed}
+        />
+        <PerformanceMetric
+          label="미계약"
+          value={stats.uncontracted}
+          pct={stats.uncontractedPct}
+          trend={trend.uncontracted}
+          onClick={() => onMetricClick('미계약', periodType)}
+          color={color}
+          isZoomed={isZoomed}
+        />
+        <PerformanceMetric
+          label="노쇼"
+          value={stats.noshow}
+          pct={stats.noshowPct}
+          trend={trend.noshow}
+          onClick={() => onMetricClick('노쇼', periodType)}
+          color={color}
+          isZoomed={isZoomed}
+        />
+      </div>
+
+      {/* Mini Sparkline Trend Chart */}
+      <SegmentTrendChart history={history} isZoomed={isZoomed} onClick={onZoom} />
+    </div>
+  );
+};
+
+const SegmentZoomModal = ({ type, dashboardData, onClose, onPrev, onNext, onMetricClick }) => {
+  const segmentMap = {
+    lureMonth: {
+      title: '월간 루어',
+      stats: dashboardData.lureMonthStats,
+      trend: dashboardData.lureMonthTrend,
+      history: dashboardData.lureMonthHistory,
+      color: 'blue',
+      periodType: 'month'
+    },
+    lureWeek: {
+      title: '주간 루어',
+      stats: dashboardData.lureWeekStats,
+      trend: dashboardData.lureWeekTrend,
+      history: dashboardData.lureWeekHistory,
+      color: 'blue',
+      periodType: 'week'
+    },
+    totalMonth: {
+      title: '월간 통합',
+      stats: dashboardData.totalMonthStats,
+      trend: dashboardData.totalMonthTrend,
+      history: dashboardData.totalMonthHistory,
+      color: 'red',
+      periodType: 'month'
+    },
+    totalWeek: {
+      title: '주간 통합',
+      stats: dashboardData.totalWeekStats,
+      trend: dashboardData.totalWeekTrend,
+      history: dashboardData.totalWeekHistory,
+      color: 'red',
+      periodType: 'week'
+    }
+  };
+
+  const segment = segmentMap[type];
+  if (!segment) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
+      <div className="relative w-full max-w-5xl animate-in zoom-in duration-300">
+        <button
+          onClick={onClose}
+          className="absolute top-6 right-6 z-10 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full transition-all active:scale-95 shadow-lg group"
+        >
+          <X className="w-6 h-6 opacity-70 group-hover:opacity-100" />
+        </button>
+        <SegmentContainer
+          {...segment}
+          onPrev={onPrev}
+          onNext={onNext}
+          onMetricClick={onMetricClick}
+          isZoomed={true}
+        />
+        <div className="mt-4 text-center text-white/40 text-xs font-black uppercase tracking-widest">
+          배경을 클릭하거나 닫기 버튼을 누르면 돌아갑니다
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SegmentTrendChart = ({ history, isZoomed = false, onClick }) => {
+  if (!history || history.length === 0) return null;
+
+  const maxVal = Math.max(...history.map(h => h.total), 1);
+  const chartHeight = isZoomed ? 200 : 60;
+  const chartWidth = isZoomed ? 800 : 300;
+  const paddingX = isZoomed ? 40 : 15;
+  const paddingY = isZoomed ? 40 : 18;
+
+  const getPoints = (key) => history.map((h, i) => {
+    const x = (i / (history.length - 1)) * (chartWidth - paddingX * 2) + paddingX;
+    const y = chartHeight - paddingY - (h[key] / maxVal) * (chartHeight - paddingY * 2);
+    return `${x},${y}`;
+  }).join(' ');
+
+  const totalPoints = getPoints('total');
+  const contractedPoints = getPoints('contracted');
+  const uncontractedPoints = getPoints('uncontracted');
+
+  return (
+    <div
+      className={`w-full ${isZoomed ? 'mt-8' : 'mt-3 cursor-pointer hover:bg-white/5 transition-colors rounded-xl'} px-1`}
+      onClick={!isZoomed ? onClick : undefined}
+    >
+      <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
+        {/* Total DB Line (White) */}
+        <polyline
+          fill="none"
+          stroke="#FFFFFF"
+          strokeWidth={isZoomed ? 3 : 1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={totalPoints}
+          className="opacity-20"
+        />
+        {/* Uncontracted Line (Red) */}
+        <polyline
+          fill="none"
+          stroke="#EF4444"
+          strokeWidth={isZoomed ? 3 : 1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={uncontractedPoints}
+          className="opacity-70"
+        />
+        {/* Contracted Line (Green) */}
+        <polyline
+          fill="none"
+          stroke="#10B981"
+          strokeWidth={isZoomed ? 3 : 1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={contractedPoints}
+          className="opacity-70"
+        />
+
+        {history.map((h, i) => {
+          const x = (i / (history.length - 1)) * (chartWidth - paddingX * 2) + paddingX;
+          const yTotal = chartHeight - paddingY - (h.total / maxVal) * (chartHeight - paddingY * 2);
+          const yContracted = chartHeight - paddingY - (h.contracted / maxVal) * (chartHeight - paddingY * 2);
+          const yUncontracted = chartHeight - paddingY - (h.uncontracted / maxVal) * (chartHeight - paddingY * 2);
+
+          return (
+            <g key={i}>
+              {/* Markers */}
+              <circle cx={x} cy={yTotal} r={isZoomed ? 4 : 1.5} fill="white" className="opacity-40" />
+              <circle cx={x} cy={yContracted} r={isZoomed ? 4 : 1.5} fill="#10B981" className="opacity-80" />
+              <circle cx={x} cy={yUncontracted} r={isZoomed ? 4 : 1.5} fill="#EF4444" className="opacity-80" />
+
+              {/* Label (Total only) */}
+              <text x={x} y={yTotal - (isZoomed ? 12 : 6)} textAnchor="middle" fontSize={isZoomed ? 12 : 7} fontWeight="black" fill="white" className="opacity-40">
+                {h.total}
+              </text>
+
+              {/* Period Label */}
+              <text x={x} y={chartHeight - (isZoomed ? 5 : 2)} textAnchor="middle" fontSize={isZoomed ? 11 : 6} fontWeight="bold" fill="white" className="opacity-20">
+                {h.label.split(' ')[0]} {h.label.split(' ')[1]}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      {/* Legend */}
+      <div className={`flex justify-center ${isZoomed ? 'gap-8 mt-6' : 'gap-3 mt-1'} opacity-40 ${isZoomed ? 'text-[12px]' : 'text-[7px]'} font-black uppercase tracking-tighter`}>
+        <div className="flex items-center gap-2"><div className={`bg-white ${isZoomed ? 'w-4 h-1' : 'w-1.5 h-0.5'}`}></div>DB (전체)</div>
+        <div className="flex items-center gap-2"><div className={`bg-[#10B981] ${isZoomed ? 'w-4 h-1' : 'w-1.5 h-0.5'}`}></div>계약 성공</div>
+        <div className="flex items-center gap-2"><div className={`bg-[#EF4444] ${isZoomed ? 'w-4 h-1' : 'w-1.5 h-0.5'}`}></div>미계약/기타</div>
+      </div>
+    </div>
+  );
+};
+
+const DetailedDashboardList = ({ filter, records, onClose, onRecordClick, onExport }) => {
+  const printRef = useRef(null);
+  const filtered = records.filter(r => {
+    if (filter.status === '계약') return r.status === '계약';
+    if (filter.status === '미계약') return r.status === '미계약';
+    if (filter.status === '노쇼') return r.status === '노쇼' || r.status === '미방문';
+    return true;
+  });
+
+  return (
+    <div className="mt-8 bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-top-6 duration-500" ref={printRef}>
+      <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div>
+          <span className="text-[10px] bg-blue-600 text-white px-3 py-1 rounded-full font-black uppercase mb-2 inline-block shadow-sm">Reporting Mode</span>
+          <h3 className="text-2xl font-black text-gray-900 tracking-tighter">{filter.label} - {filter.status === 'total' ? '전체 DB' : filter.status} 상세 내역</h3>
+          <p className="text-sm text-gray-400 font-bold mt-1">총 <span className="text-blue-600 underline font-black">{filtered.length}건</span>의 기록이 필터링되었습니다.</p>
+        </div>
+        <div className="flex gap-3 no-print">
+          <button
+            onClick={() => onExport(printRef.current)}
+            className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-2xl text-sm font-black hover:bg-black transition-all shadow-lg active:scale-95"
+          >
+            <Download className="w-4 h-4" /> A4 출력/PDF 저장
+          </button>
+          <button
+            onClick={onClose}
+            className="p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-all text-gray-400"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+
+      <div className="max-h-[600px] overflow-y-auto">
+        <table className="w-full text-left border-collapse">
+          <thead className="sticky top-0 bg-white/80 backdrop-blur-md z-10 shadow-sm">
+            <tr className="border-b border-gray-100">
+              <th className="p-5 text-[11px] font-black text-gray-400 uppercase">예약일 / 등록</th>
+              <th className="p-5 text-[11px] font-black text-gray-400 uppercase">고객명</th>
+              <th className="p-5 text-[11px] font-black text-gray-400 uppercase">유입 / 지점</th>
+              <th className="p-5 text-[11px] font-black text-gray-400 uppercase">상담자</th>
+              <th className="p-5 text-[11px] font-black text-gray-400 uppercase">상태</th>
+              <th className="p-5 text-[11px] font-black text-gray-400 uppercase text-right">금액</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {filtered.map(r => (
+              <tr
+                key={r.id}
+                onClick={() => onRecordClick(r)}
+                className="hover:bg-blue-50/30 cursor-pointer transition-colors group"
+              >
+                <td className="p-5">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-black text-gray-700">{r.reservationDate}</span>
+                    <span className="text-[10px] font-bold text-gray-400">{r.registrationDate || '-'}</span>
+                  </div>
+                </td>
+                <td className="p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-blue-600 transition-colors">
+                      <User className="w-4 h-4 text-gray-400 group-hover:text-white" />
+                    </div>
+                    <span className="text-sm font-black text-gray-800">{r.customerName}</span>
+                  </div>
+                </td>
+                <td className="p-5">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-gray-700">{r.source}</span>
+                    <span className="text-[10px] font-black text-blue-500">{r.branch}</span>
+                  </div>
+                </td>
+                <td className="p-5 text-sm font-bold text-gray-600">{r.salesperson || '-'}</td>
+                <td className="p-5">
+                  <span className={`px-2 py-1 rounded-lg text-[10px] font-black ${r.status === '계약' ? 'bg-blue-100 text-blue-700' :
+                    r.status === '노쇼' || r.status === '미방문' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                    {r.status}
+                  </span>
+                </td>
+                <td className="p-5 text-right font-black text-gray-900">
+                  {r.finalContractAmount ? `${Number(r.finalContractAmount).toLocaleString()}` : '-'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+
+const SaveSuccessModal = ({ result, onClose }) => {
+  const handleCopyAndClose = () => {
+    const info = `
+[${result.branch}]
+[${result.status === '계약' ? '계약완료' : result.status}]
+고객이름: ${result.customerName}
+DB출처: ${result.source}
+예약일: ${result.reservationDate}
+최종결제금액: ${result.finalContractAmount ? Number(result.finalContractAmount).toLocaleString() : '0'}원
+상세 계약금액/메모:
+${result.contractAmount || '-'}
+
+상담내용:
+${result.consultationContent || '-'}
+    `.trim();
+
+    navigator.clipboard.writeText(info).then(() => {
+      onClose();
+    });
+  };
+
+  // Auto-copy on mount
+  useEffect(() => {
+    const info = `
+[${result.branch}]
+[${result.status === '계약' ? '계약완료' : result.status}]
+고객이름: ${result.customerName}
+DB출처: ${result.source}
+예약일: ${result.reservationDate}
+최종결제금액: ${result.finalContractAmount ? Number(result.finalContractAmount).toLocaleString() : '0'}원
+상세 계약금액/메모:
+${result.contractAmount || '-'}
+
+상담내용:
+${result.consultationContent || '-'}
+    `.trim();
+    navigator.clipboard.writeText(info);
+  }, [result]);
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-80 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="bg-blue-600 p-6 text-center">
+          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-8 h-8 text-white" />
+          </div>
+          <h3 className="text-xl font-black text-white">저장 및 복사 완료!</h3>
+          <p className="text-blue-100 text-xs mt-1 font-bold">내용이 자동 복사되었습니다. 카톡에 붙여넣으세요.</p>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 text-sm space-y-2">
+            <div className="flex justify-between font-bold text-gray-400 text-[10px]">
+              <span>[{result.branch}]</span>
+              <span className={result.status === '계약' ? 'text-blue-600' : 'text-red-500'}>{result.status === '계약' ? '계약완료' : result.status}</span>
+            </div>
+            <div className="font-black text-gray-800 border-b border-gray-200 pb-2 mb-2">{result.customerName} 고객님</div>
+            <p className="text-gray-600 leading-relaxed text-[12px] whitespace-pre-wrap truncate max-h-[100px]">{result.contractAmount || result.consultationContent || '내용 없음'}</p>
+          </div>
+          <button
+            onClick={handleCopyAndClose}
+            className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black shadow-xl hover:bg-black transition-all active:scale-95"
+          >
+            확인 닫기 (자동복사됨)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 
 const renderChart = (data, ChartComponent) => {
@@ -2431,10 +3092,23 @@ const SalespersonTrendSection = ({ trendData, targetMonths, salespersonSearch, s
   );
 };
 
+// --- Utility Functions ---
+const formatWithCommas = (val) => {
+  if (val === undefined || val === null || val === '') return '';
+  const num = val.toString().replace(/[^0-9]/g, '');
+  return num.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
+const unformatCommas = (val) => {
+  if (!val) return '';
+  return val.toString().replace(/,/g, '');
+};
+
 const ConsultationModal = ({ record, onClose, onSave, reasons, onAddComment, onDeleteComment, newCommentText, setNewCommentText }) => {
   const [status, setStatus] = useState((record.status === '대기' || !record.status) ? '계약' : record.status);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
-  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(true);
+  const [isAddingContent, setIsAddingContent] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({
     customerName: record.customerName || '',
     customerContact: record.customerContact || '',
@@ -2453,7 +3127,14 @@ const ConsultationModal = ({ record, onClose, onSave, reasons, onAddComment, onD
     noShowContactTime: record.noShowContactTime || '',
   });
 
-  const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'finalContractAmount' || name === 'contractAmount') {
+      setFormData(prev => ({ ...prev, [name]: unformatCommas(value) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
   const handleCustomerChange = (e) => setCustomerInfo(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = () => {
@@ -2461,6 +3142,31 @@ const ConsultationModal = ({ record, onClose, onSave, reasons, onAddComment, onD
       ...formData,
       ...customerInfo,
       status
+    });
+  };
+
+  const handleCopyAllInfo = () => {
+    const info = `
+[고객 정보]
+성함: ${customerInfo.customerName}
+연락처: ${customerInfo.customerContact}
+예약일: ${customerInfo.reservationDate} ${customerInfo.reservationTime}
+상담자: ${customerInfo.salesperson || '미지정'}
+
+[상담 결과]
+상태: ${status}
+${status === '계약' ? `결제금액: ${formatWithCommas(formData.finalContractAmount)}원\n계약상세: ${formData.contractAmount}` : ''}
+${status === '미계약' ? `미계약사유: ${formData.reason}` : ''}
+상담내용: ${formData.consultationContent}
+
+[상담 히스토리]
+${[...(record.consultationLogs || []), ...(record.comments || []).map((c) => (typeof c === 'object' ? c.text : c))]
+        .filter(log => typeof log === 'string' && !log.includes('[object Object]'))
+        .map(log => `- ${log}`).join('\n')}
+    `.trim();
+
+    navigator.clipboard.writeText(info).then(() => {
+      alert("전체 내용이 복사되었습니다.");
     });
   };
 
@@ -2528,6 +3234,83 @@ const ConsultationModal = ({ record, onClose, onSave, reasons, onAddComment, onD
             )}
           </div>
 
+          {/* Final Consultation Result Display Section */}
+          <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3 font-sans">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-[11px] font-black text-gray-500 bg-gray-200/50 px-2 py-0.5 rounded uppercase tracking-wider">최종 상담 결과</span>
+              <span className={`text-xs font-black px-2 py-0.5 rounded-full ${status === '계약' ? 'bg-blue-600 text-white' : status === '미계약' ? 'bg-red-600 text-white' : 'bg-gray-800 text-white'}`}>
+                {status}
+              </span>
+            </div>
+
+            {status === '계약' && (
+              <div className="space-y-3">
+                <div className="flex justify-between items-baseline border-b border-gray-200 pb-2">
+                  <span className="text-xs font-bold text-gray-400">최종결제금액</span>
+                  <span className="text-lg font-black text-blue-600">{formatWithCommas(formData.finalContractAmount)}원</span>
+                </div>
+
+                {formData.contractAmount && (
+                  <div>
+                    <span className="block text-[10px] font-black text-gray-400 mb-1">상세 계약금액/메모</span>
+                    <div className="bg-white p-3 rounded-xl border border-gray-100 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner font-medium">
+                      {formData.contractAmount}
+                    </div>
+                  </div>
+                )}
+
+                {formData.consultationContent && (
+                  <div>
+                    <span className="block text-[10px] font-black text-gray-400 mb-1">계약과정 및 상담내용</span>
+                    <div className="bg-white/50 p-3 rounded-xl border border-gray-100 text-sm text-gray-600 whitespace-pre-wrap leading-relaxed italic">
+                      {formData.consultationContent}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {status === '미계약' && (
+              <div className="space-y-3">
+                <div className="flex justify-between items-baseline border-b border-gray-200 pb-2">
+                  <span className="text-xs font-bold text-gray-400">미계약 사유</span>
+                  <span className="text-sm font-black text-red-600">{formData.reason || '사유 미입력'}</span>
+                </div>
+                {formData.consultationContent && (
+                  <div>
+                    <span className="block text-[10px] font-black text-gray-400 mb-1">상담/조치 내용</span>
+                    <div className="bg-white p-3 rounded-xl border border-gray-100 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                      {formData.consultationContent}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(status === '노쇼' || status === '미방문') && (
+              <div className="space-y-3">
+                <div className="flex justify-between items-baseline border-b border-gray-200 pb-2">
+                  <span className="text-xs font-bold text-gray-400">컨택 일시</span>
+                  <span className="text-sm font-black text-gray-700">{formData.noShowContactDate} {formData.noShowContactTime}</span>
+                </div>
+                {formData.consultationContent && (
+                  <div>
+                    <span className="block text-[10px] font-black text-gray-400 mb-1">노쇼 사유 / 메모</span>
+                    <div className="bg-white p-3 rounded-xl border border-gray-100 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                      {formData.consultationContent}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(!formData.finalContractAmount && !formData.contractAmount && !formData.consultationContent && !formData.reason) && (
+              <div className="py-4 text-center text-xs font-bold text-gray-300 italic">
+                등록된 상세 상담 결과가 없습니다.
+              </div>
+            )}
+          </div>
+
           <div className="bg-white">
             <button
               onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
@@ -2535,7 +3318,7 @@ const ConsultationModal = ({ record, onClose, onSave, reasons, onAddComment, onD
             >
               <div className="flex items-center gap-2">
                 <History className="w-4 h-4 text-gray-500" />
-                <span className="text-xs font-black text-gray-600">과거 상담 히스토리 보기</span>
+                <span className="text-xs font-black text-gray-600">상담 히스토리</span>
                 <span className="text-[10px] bg-white px-2 py-0.5 rounded-full text-gray-400 font-bold border border-gray-200">
                   {(record.consultationLogs?.length || 0) + (record.comments?.length || 0)}건
                 </span>
@@ -2566,98 +3349,137 @@ const ConsultationModal = ({ record, onClose, onSave, reasons, onAddComment, onD
                       <p className="text-[13px] text-gray-700 whitespace-pre-wrap leading-relaxed">{item.text}</p>
                     </div>
                   ))}
+                <button
+                  onClick={handleCopyAllInfo}
+                  className="w-full py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-500 hover:bg-white hover:text-blue-600 transition-all flex items-center justify-center gap-2 mt-4"
+                >
+                  <Copy className="w-3.5 h-3.5" /> 전체 히스토리 복사
+                </button>
               </div>
             )}
           </div>
 
           <div className="border-t border-gray-100 pt-4">
-            <div className="flex bg-gray-100 p-1.5 rounded-2xl gap-1 mb-4">
-              {['계약', '미계약', '노쇼'].map(s => (
-                <button key={s} onClick={() => setStatus(s)}
-                  className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${status === s ?
-                    (s === '계약' ? 'bg-white text-blue-600 shadow-md transform scale-105' : s === '미계약' ? 'bg-white text-red-600 shadow-md transform scale-105' : 'bg-white text-gray-800 shadow-md transform scale-105')
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'
-                    }`}>
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-4 font-sans">
-              {status === '계약' && (
-                <div className="space-y-3 bg-blue-50 p-4 rounded-xl border border-blue-100">
-                  <div>
-                    <label className="block text-sm font-semibold text-blue-900 mb-1">최종결제금액 (순위정산용)</label>
-                    <input type="number" name="finalContractAmount" value={formData.finalContractAmount} onChange={handleChange} className="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="숫자만 입력 (단위: 만원)" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-blue-900 mb-1">상세 계약금액/메모</label>
-                    <input type="text" name="contractAmount" value={formData.contractAmount} onChange={handleChange} className="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="최종금액 백데이터 정보 메모" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-blue-900 mb-1">계약과정 및 상담내용 작성</label>
-                    <textarea name="consultationContent" value={formData.consultationContent} onChange={handleChange} rows="3" className="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="예)상담시간 60분 등"></textarea>
-                  </div>
+            {!isAddingContent && !isEditingInfo ? (
+              <button
+                onClick={() => setIsAddingContent(true)}
+                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-100 flex items-center justify-center gap-2 hover:bg-blue-700 transition-all active:scale-95"
+              >
+                <Plus className="w-5 h-5" /> 내용 추가 (상태 변경 및 상담 작성)
+              </button>
+            ) : isAddingContent ? (
+              <div className="space-y-4 animate-in fade-in duration-300">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-black text-gray-800">상담 내용 및 상태 업데이트</h4>
+                  <button onClick={() => setIsAddingContent(false)} className="text-xs font-bold text-gray-400 hover:text-red-500">닫기</button>
                 </div>
-              )}
-
-              {status === '미계약' && (
-                <div className="space-y-3 bg-red-50 p-4 rounded-xl border border-red-100">
-                  <div>
-                    <label className="block text-sm font-semibold text-red-900 mb-1">미계약 사유</label>
-                    <select name="reason" value={formData.reason} onChange={handleChange} className="w-full p-3 border border-red-200 rounded-lg bg-white focus:ring-2 focus:ring-red-500 outline-none">
-                      <option value="">사유 선택</option>
-                      {reasons.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-red-900 mb-1">상담/조치 내용</label>
-                    <textarea name="consultationContent" value={formData.consultationContent} onChange={handleChange} rows="3" className="w-full p-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="예)상담시간 60분 등"></textarea>
-                  </div>
+                <div className="flex bg-gray-100 p-1.5 rounded-2xl gap-1 mb-4">
+                  {['계약', '미계약', '노쇼'].map(s => (
+                    <button key={s} onClick={() => setStatus(s)}
+                      className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${status === s ?
+                        (s === '계약' ? 'bg-white text-blue-600 shadow-md transform scale-105' : s === '미계약' ? 'bg-white text-red-600 shadow-md transform scale-105' : 'bg-white text-gray-800 shadow-md transform scale-105')
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'
+                        }`}>
+                      {s}
+                    </button>
+                  ))}
                 </div>
-              )}
 
-              {(status === '노쇼' || status === '미방문') && (
-                <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">컨택 날짜</label>
-                      <input type="date" name="noShowContactDate" value={formData.noShowContactDate} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg" />
+                <div className="space-y-4 font-sans">
+                  {status === '계약' && (
+                    <div className="space-y-3 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                      <div>
+                        <label className="block text-sm font-semibold text-blue-900 mb-1">최종결제금액 (순위정산용) 단위:원</label>
+                        <input type="text" name="finalContractAmount" value={formatWithCommas(formData.finalContractAmount)} onChange={handleChange} className="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold" placeholder="원화단위 입력 예) 990,000" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-blue-900 mb-1">상세 계약금액/메모</label>
+                        <textarea
+                          name="contractAmount"
+                          value={formData.contractAmount}
+                          onChange={handleChange}
+                          rows="6"
+                          className="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm leading-relaxed"
+                          placeholder={`예) 하드 (219) 조끼 (40)\n기성대체  (30)\n정장1 조끼1 셔츠2 구두1 대여2\n총 289(28,9)-317,9\n박 30\n계 287,9\n잔 x`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-blue-900 mb-1">계약과정 및 상담내용 작성</label>
+                        <textarea
+                          name="consultationContent"
+                          value={formData.consultationContent}
+                          onChange={handleChange}
+                          rows="4"
+                          className="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                          placeholder="예) 상담내용 + 체촌여부 + 상담시간 + 반도진행 여부 등"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">시간</label>
-                      <input type="time" name="noShowContactTime" value={formData.noShowContactTime} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">노쇼 사유 / 메모</label>
-                    <textarea name="consultationContent" value={formData.consultationContent} onChange={handleChange} rows="3" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 outline-none" placeholder="예)상담시간 60분 등"></textarea>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              <div className="mt-6 border-t border-gray-100 pt-6">
-                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200">
-                  <textarea
-                    value={newCommentText}
-                    onChange={(e) => setNewCommentText(e.target.value)}
-                    rows="2"
-                    placeholder="관리자 코멘트를 입력하세요..."
-                    className="w-full p-2 text-sm border-0 bg-transparent focus:ring-0 outline-none resize-none font-sans"
-                  ></textarea>
-                  <div className="flex justify-end pt-2 border-t border-gray-200 mt-2">
-                    <button onClick={onAddComment} className="px-4 py-1.5 bg-gray-800 text-white rounded-lg text-xs font-bold hover:bg-black transition-colors">코멘트 등록</button>
-                  </div>
+                  {status === '미계약' && (
+                    <div className="space-y-3 bg-red-50 p-4 rounded-xl border border-red-100">
+                      <div>
+                        <label className="block text-sm font-semibold text-red-900 mb-1">미계약 사유</label>
+                        <select name="reason" value={formData.reason} onChange={handleChange} className="w-full p-3 border border-red-200 rounded-lg bg-white focus:ring-2 focus:ring-red-500 outline-none">
+                          <option value="">사유 선택</option>
+                          {reasons.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-red-900 mb-1">상담/조치 내용</label>
+                        <textarea name="consultationContent" value={formData.consultationContent} onChange={handleChange} rows="3" className="w-full p-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="예)상담시간 60분 등"></textarea>
+                      </div>
+                    </div>
+                  )}
+
+                  {(status === '노쇼' || status === '미방문') && (
+                    <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1">컨택 날짜</label>
+                          <input type="date" name="noShowContactDate" value={formData.noShowContactDate} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1">시간</label>
+                          <input type="time" name="noShowContactTime" value={formData.noShowContactTime} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">노쇼 사유 / 메모</label>
+                        <textarea name="consultationContent" value={formData.consultationContent} onChange={handleChange} rows="3" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 outline-none" placeholder="예)상담시간 60분 등"></textarea>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-6 border-t border-gray-100 pt-6">
+              <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200">
+                <textarea
+                  value={newCommentText}
+                  onChange={(e) => setNewCommentText(e.target.value)}
+                  rows="2"
+                  placeholder="관리자 코멘트를 입력하세요..."
+                  className="w-full p-2 text-sm border-0 bg-transparent focus:ring-0 outline-none resize-none font-sans"
+                ></textarea>
+                <div className="flex justify-end pt-2 border-t border-gray-200 mt-2">
+                  <button onClick={onAddComment} className="px-4 py-1.5 bg-gray-800 text-white rounded-lg text-xs font-bold hover:bg-black transition-colors">코멘트 등록</button>
                 </div>
               </div>
             </div>
           </div>
         </div>
         <div className="p-5 border-t bg-gray-50 rounded-b-2xl flex gap-3 sticky bottom-0 bg-white">
-          <button onClick={onClose} className="flex-1 py-3 text-sm bg-white border border-gray-300 rounded-xl font-black text-gray-600 hover:bg-gray-50 transition-colors">취소</button>
-          <button onClick={handleSubmit} className={`flex-[2] py-3 text-sm text-white rounded-xl font-black shadow-xl transition-all active:scale-95 ${status === '계약' ? 'bg-blue-600 hover:bg-blue-700' :
-            status === '미계약' ? 'bg-red-500 hover:bg-red-600' : 'bg-black hover:bg-gray-800'
-            }`}>상담 결과 저장</button>
+          <button onClick={onClose} className="flex-1 py-3 text-sm bg-white border border-gray-300 rounded-xl font-black text-gray-600 hover:bg-gray-50 transition-colors">닫기</button>
+          {(isAddingContent || isEditingInfo) && (
+            <button onClick={handleSubmit} className={`flex-[2] py-4 text-sm text-white rounded-xl font-black shadow-xl transition-all active:scale-95 ${status === '계약' ? 'bg-blue-600 hover:bg-blue-700' :
+              status === '미계약' ? 'bg-red-500 hover:bg-red-600' : 'bg-black hover:bg-gray-800'
+              }`}>
+              {status === '계약' ? '계약 완료 및 등록' : status === '미계약' ? '미계약 건 등록' : '노쇼(미방문) 등록'}
+            </button>
+          )}
         </div>
       </div>
     </div>
