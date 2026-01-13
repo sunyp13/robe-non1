@@ -32,7 +32,7 @@ function Dashboard({ user }) {
   // --- Integrated CRM State ---
   const [customerRecords, setCustomerRecords] = useState([]); // Unified records
   const [newCustomerForm, setNewCustomerForm] = useState({
-    branch: '대전본점',
+    branch: '도산',
     tmPerson: '', // TM reservation
     salesperson: '', // Field salesperson (Unified)
     customerName: '',
@@ -479,7 +479,7 @@ function Dashboard({ user }) {
       isProcessingExisting: true,
       customerName: record.customerName || '',
       customerContact: record.customerContact || '',
-      branch: record.branch || '대전본점',
+      branch: record.branch || '도산',
       source: record.source || '인스타그램',
       reservationDate: record.reservationDate || '',
       reservationTime: record.reservationTime || '',
@@ -967,6 +967,7 @@ function Dashboard({ user }) {
     if (searchTerm) {
       processedRecords = processedRecords.filter(record =>
         record.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        record.customerContact?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         record.salesperson?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
