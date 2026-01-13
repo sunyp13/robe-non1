@@ -2791,50 +2791,52 @@ const DetailedDashboardList = ({ filter, records, onClose, onRecordClick, onExpo
                     {r.finalContractAmount ? `${Number(r.finalContractAmount).toLocaleString()}` : '-'}
                   </td>
                 </tr>
-                {/* Detail Summary Row */}
-                <tr className="bg-gray-50/50 print-detail-row">
-                  <td colSpan="6" className="p-0">
-                    <div className="flex flex-col md:flex-row gap-4 px-10 py-4 border-b border-gray-100">
-                      {(r.contractAmount || r.consultationContent || r.reason) ? (
-                        <>
-                          {r.status === '계약' ? (
-                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {r.contractAmount && (
-                                <div className="space-y-1">
-                                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">계약 상세/메모</span>
-                                  <p className="text-[11px] text-gray-600 whitespace-pre-wrap leading-relaxed">{r.contractAmount}</p>
-                                </div>
-                              )}
-                              {r.consultationContent && (
-                                <div className="space-y-1">
-                                  <span className="text-[10px] font-black text-blue-400 uppercase tracking-tighter">계약 과정</span>
-                                  <p className="text-[11px] text-gray-500 whitespace-pre-wrap leading-relaxed italic">{r.consultationContent}</p>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {r.reason && (
-                                <div className="space-y-1">
-                                  <span className="text-[10px] font-black text-red-600 uppercase tracking-tighter">미계약 사유</span>
-                                  <p className="text-[11px] text-gray-600 font-bold">{r.reason}</p>
-                                </div>
-                              )}
-                              {r.consultationContent && (
-                                <div className="space-y-1">
-                                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">상담/조치 내용</span>
-                                  <p className="text-[11px] text-gray-600 whitespace-pre-wrap leading-relaxed">{r.consultationContent}</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-[10px] text-gray-300 italic font-bold">등록된 상세 내용 없음</span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+                {/* Detail Summary Row (Only show during print/export) */}
+                {isExpandingForPrint && (
+                  <tr className="bg-gray-50/50 print-detail-row">
+                    <td colSpan="6" className="p-0">
+                      <div className="flex flex-col md:flex-row gap-4 px-10 py-4 border-b border-gray-100">
+                        {(r.contractAmount || r.consultationContent || r.reason) ? (
+                          <>
+                            {r.status === '계약' ? (
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {r.contractAmount && (
+                                  <div className="space-y-1">
+                                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">계약 상세/메모</span>
+                                    <p className="text-[11px] text-gray-600 whitespace-pre-wrap leading-relaxed">{r.contractAmount}</p>
+                                  </div>
+                                )}
+                                {r.consultationContent && (
+                                  <div className="space-y-1">
+                                    <span className="text-[10px] font-black text-blue-400 uppercase tracking-tighter">계약 과정</span>
+                                    <p className="text-[11px] text-gray-500 whitespace-pre-wrap leading-relaxed italic">{r.consultationContent}</p>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {r.reason && (
+                                  <div className="space-y-1">
+                                    <span className="text-[10px] font-black text-red-600 uppercase tracking-tighter">미계약 사유</span>
+                                    <p className="text-[11px] text-gray-600 font-bold">{r.reason}</p>
+                                  </div>
+                                )}
+                                {r.consultationContent && (
+                                  <div className="space-y-1">
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">상담/조치 내용</span>
+                                    <p className="text-[11px] text-gray-600 whitespace-pre-wrap leading-relaxed">{r.consultationContent}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-[10px] text-gray-300 italic font-bold">등록된 상세 내용 없음</span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </React.Fragment>
             ))}
           </tbody>
