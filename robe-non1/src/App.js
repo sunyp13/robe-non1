@@ -2795,11 +2795,12 @@ const DetailedDashboardList = ({ filter, records, onClose, onRecordClick, onExpo
                 {isExpandingForPrint && (
                   <tr className="bg-gray-50/50 print-detail-row">
                     <td colSpan="6" className="p-0">
-                      <div className="flex flex-col md:flex-row gap-4 px-10 py-4 border-b border-gray-100">
+                      <div className="flex flex-col gap-6 px-10 py-6 border-b border-gray-100">
+                        {/* 1. Final Result Section */}
                         {(r.contractAmount || r.consultationContent || r.reason) ? (
-                          <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {r.status === '계약' ? (
-                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <>
                                 {r.contractAmount && (
                                   <div className="space-y-1">
                                     <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">계약 상세/메모</span>
@@ -2812,9 +2813,9 @@ const DetailedDashboardList = ({ filter, records, onClose, onRecordClick, onExpo
                                     <p className="text-[11px] text-gray-500 whitespace-pre-wrap leading-relaxed italic">{r.consultationContent}</p>
                                   </div>
                                 )}
-                              </div>
+                              </>
                             ) : (
-                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <>
                                 {r.reason && (
                                   <div className="space-y-1">
                                     <span className="text-[10px] font-black text-red-600 uppercase tracking-tighter">미계약 사유</span>
@@ -2827,12 +2828,39 @@ const DetailedDashboardList = ({ filter, records, onClose, onRecordClick, onExpo
                                     <p className="text-[11px] text-gray-600 whitespace-pre-wrap leading-relaxed">{r.consultationContent}</p>
                                   </div>
                                 )}
-                              </div>
+                              </>
                             )}
-                          </>
+                          </div>
                         ) : (
                           <span className="text-[10px] text-gray-300 italic font-bold">등록된 상세 내용 없음</span>
                         )}
+
+                        {/* 2. Full History Section */}
+                        <div className="bg-white/50 p-4 rounded-xl border border-gray-100 shadow-sm">
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter mb-2 block">상담 히스토리 (상세 로그)</span>
+                          <div className="space-y-3">
+                            {[...(r.consultationLogs || []), ...(r.comments || []).map((c, i) => (typeof c === 'object' ? { ...c, isComment: true, index: i } : { text: c, isComment: true, index: i }))]
+                              .sort((a, b) => {
+                                const dA = a.createdAt?.toDate ? a.createdAt.toDate() : (a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.createdAt || a.timestamp || 0));
+                                const dB = b.createdAt?.toDate ? b.createdAt.toDate() : (b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.createdAt || b.timestamp || 0));
+                                return dB - dA;
+                              })
+                              .map((item, hIdx) => (
+                                <div key={hIdx} className="border-l-2 border-gray-200 pl-3 py-1">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${item.isComment ? 'bg-amber-100 text-amber-700' : (item.type?.includes('계약') && !item.type?.includes('미') ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700')}`}>
+                                      {item.isComment ? 'COMMENT' : (item.type || 'LOG')}
+                                    </span>
+                                    <span className="text-[8px] text-gray-400 font-bold">
+                                      {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleString('ko-KR') : (item.timestamp?.toDate ? item.timestamp.toDate().toLocaleString('ko-KR') : '-')}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-gray-600 leading-tight whitespace-pre-wrap">{item.text}</p>
+                                </div>
+                              ))}
+                            {(!r.consultationLogs?.length && !r.comments?.length) && <p className="text-[10px] text-gray-300 italic">로그 기록 없음</p>}
+                          </div>
+                        </div>
                       </div>
                     </td>
                   </tr>
