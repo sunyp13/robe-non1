@@ -2700,6 +2700,7 @@ const SegmentTrendChart = ({ history, isZoomed = false, onClick }) => {
 };
 
 const DetailedDashboardList = ({ filter, records, onClose, onRecordClick, onExport }) => {
+  const [isExpandingForPrint, setIsExpandingForPrint] = useState(false);
   const printRef = useRef(null);
   const filtered = records.filter(r => {
     if (filter.status === '계약') return r.status === '계약';
@@ -2718,7 +2719,14 @@ const DetailedDashboardList = ({ filter, records, onClose, onRecordClick, onExpo
         </div>
         <div className="flex gap-3 no-print">
           <button
-            onClick={() => onExport(printRef.current)}
+            onClick={async () => {
+              setIsExpandingForPrint(true);
+              // Wait for React to re-render without the max-h constraint
+              setTimeout(async () => {
+                await onExport(printRef.current);
+                setIsExpandingForPrint(false);
+              }, 500);
+            }}
             className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-2xl text-sm font-black hover:bg-black transition-all shadow-lg active:scale-95"
           >
             <Download className="w-4 h-4" /> A4 출력/PDF 저장
@@ -2732,7 +2740,7 @@ const DetailedDashboardList = ({ filter, records, onClose, onRecordClick, onExpo
         </div>
       </div>
 
-      <div className="max-h-[600px] overflow-y-auto">
+      <div className={isExpandingForPrint ? "" : "max-h-[600px] overflow-y-auto"}>
         <table className="w-full text-left border-collapse">
           <thead className="sticky top-0 bg-white/80 backdrop-blur-md z-10 shadow-sm">
             <tr className="border-b border-gray-100">
@@ -2746,43 +2754,88 @@ const DetailedDashboardList = ({ filter, records, onClose, onRecordClick, onExpo
           </thead>
           <tbody className="divide-y divide-gray-50">
             {filtered.map(r => (
-              <tr
-                key={r.id}
-                onClick={() => onRecordClick(r)}
-                className="hover:bg-blue-50/30 cursor-pointer transition-colors group"
-              >
-                <td className="p-5">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-black text-gray-700">{r.reservationDate}</span>
-                    <span className="text-[10px] font-bold text-gray-400">{r.registrationDate || '-'}</span>
-                  </div>
-                </td>
-                <td className="p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-blue-600 transition-colors">
-                      <User className="w-4 h-4 text-gray-400 group-hover:text-white" />
+              <React.Fragment key={r.id}>
+                <tr
+                  onClick={() => onRecordClick(r)}
+                  className="hover:bg-blue-50/30 cursor-pointer transition-colors group"
+                >
+                  <td className="p-5">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black text-gray-700">{r.reservationDate}</span>
+                      <span className="text-[10px] font-bold text-gray-400">{r.registrationDate || '-'}</span>
                     </div>
-                    <span className="text-sm font-black text-gray-800">{r.customerName}</span>
-                  </div>
-                </td>
-                <td className="p-5">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-gray-700">{r.source}</span>
-                    <span className="text-[10px] font-black text-blue-500">{r.branch}</span>
-                  </div>
-                </td>
-                <td className="p-5 text-sm font-bold text-gray-600">{r.salesperson || '-'}</td>
-                <td className="p-5">
-                  <span className={`px-2 py-1 rounded-lg text-[10px] font-black ${r.status === '계약' ? 'bg-blue-100 text-blue-700' :
-                    r.status === '노쇼' || r.status === '미방문' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                    {r.status}
-                  </span>
-                </td>
-                <td className="p-5 text-right font-black text-gray-900">
-                  {r.finalContractAmount ? `${Number(r.finalContractAmount).toLocaleString()}` : '-'}
-                </td>
-              </tr>
+                  </td>
+                  <td className="p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-blue-600 transition-colors">
+                        <User className="w-4 h-4 text-gray-400 group-hover:text-white" />
+                      </div>
+                      <span className="text-sm font-black text-gray-800">{r.customerName}</span>
+                    </div>
+                  </td>
+                  <td className="p-5">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-gray-700">{r.source}</span>
+                      <span className="text-[10px] font-black text-blue-500">{r.branch}</span>
+                    </div>
+                  </td>
+                  <td className="p-5 text-sm font-bold text-gray-600">{r.salesperson || '-'}</td>
+                  <td className="p-5">
+                    <span className={`px-2 py-1 rounded-lg text-[10px] font-black ${r.status === '계약' ? 'bg-blue-100 text-blue-700' :
+                      r.status === '노쇼' || r.status === '미방문' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                      {r.status}
+                    </span>
+                  </td>
+                  <td className="p-5 text-right font-black text-gray-900 border-r border-gray-50">
+                    {r.finalContractAmount ? `${Number(r.finalContractAmount).toLocaleString()}` : '-'}
+                  </td>
+                </tr>
+                {/* Detail Summary Row */}
+                <tr className="bg-gray-50/50 print-detail-row">
+                  <td colSpan="6" className="p-0">
+                    <div className="flex flex-col md:flex-row gap-4 px-10 py-4 border-b border-gray-100">
+                      {(r.contractAmount || r.consultationContent || r.reason) ? (
+                        <>
+                          {r.status === '계약' ? (
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {r.contractAmount && (
+                                <div className="space-y-1">
+                                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">계약 상세/메모</span>
+                                  <p className="text-[11px] text-gray-600 whitespace-pre-wrap leading-relaxed">{r.contractAmount}</p>
+                                </div>
+                              )}
+                              {r.consultationContent && (
+                                <div className="space-y-1">
+                                  <span className="text-[10px] font-black text-blue-400 uppercase tracking-tighter">계약 과정</span>
+                                  <p className="text-[11px] text-gray-500 whitespace-pre-wrap leading-relaxed italic">{r.consultationContent}</p>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {r.reason && (
+                                <div className="space-y-1">
+                                  <span className="text-[10px] font-black text-red-600 uppercase tracking-tighter">미계약 사유</span>
+                                  <p className="text-[11px] text-gray-600 font-bold">{r.reason}</p>
+                                </div>
+                              )}
+                              {r.consultationContent && (
+                                <div className="space-y-1">
+                                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">상담/조치 내용</span>
+                                  <p className="text-[11px] text-gray-600 whitespace-pre-wrap leading-relaxed">{r.consultationContent}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-gray-300 italic font-bold">등록된 상세 내용 없음</span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
