@@ -2007,7 +2007,7 @@ function Dashboard({ user }) {
                 {!newCustomerForm.isProcessingExisting && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">메모 (특이사항)</label>
-                    <textarea name="memo" value={newCustomerForm.memo} onChange={handleCustomerFormChange} rows="2" className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="고객 특이사항 입력"></textarea>
+                    <textarea name="memo" value={newCustomerForm.memo} onChange={handleCustomerFormChange} rows="2" className="w-full p-2 border border-gray-300 rounded-lg text-sm" placeholder="박람회 및 TM 시 고객 정보 메모란"></textarea>
                   </div>
                 )}
 
@@ -2882,17 +2882,22 @@ const DetailedDashboardList = ({ filter, records, onClose, onRecordClick, onExpo
 const SaveSuccessModal = ({ result, onClose }) => {
   const handleCopyAndClose = () => {
     const info = `
-[${result.branch}]
-[${result.status === '계약' ? '계약완료' : result.status}]
-고객이름: ${result.customerName}
-DB출처: ${result.source}
-예약일: ${result.reservationDate}
-최종결제금액: ${result.finalContractAmount ? Number(result.finalContractAmount).toLocaleString() : '0'}원
-상세 계약금액/메모:
+[상담 결과]
+상태: ${result.status === '계약' ? '계약완료' : result.status}
+지점: ${result.branch}
+상담자: ${result.salesperson || '미지정'}
+
+${result.status === '계약' ? `최종결제금액: ${result.finalContractAmount ? Number(result.finalContractAmount).toLocaleString() : '0'}원
+상세계약금액/메모:
 ${result.contractAmount || '-'}
 
-상담내용:
-${result.consultationContent || '-'}
+계약과정 및 상담내용:
+${result.consultationContent || '-'}` :
+        result.status === '미계약' ? `미계약사유: ${result.reason || '-'}
+상담/조치 내용:
+${result.consultationContent || '-'}` :
+          `상담 내용:
+${result.consultationContent || '-'}`}
     `.trim();
 
     navigator.clipboard.writeText(info).then(() => {
@@ -2903,17 +2908,22 @@ ${result.consultationContent || '-'}
   // Auto-copy on mount
   useEffect(() => {
     const info = `
-[${result.branch}]
-[${result.status === '계약' ? '계약완료' : result.status}]
-고객이름: ${result.customerName}
-DB출처: ${result.source}
-예약일: ${result.reservationDate}
-최종결제금액: ${result.finalContractAmount ? Number(result.finalContractAmount).toLocaleString() : '0'}원
-상세 계약금액/메모:
+[상담 결과]
+상태: ${result.status === '계약' ? '계약완료' : result.status}
+지점: ${result.branch}
+상담자: ${result.salesperson || '미지정'}
+
+${result.status === '계약' ? `최종결제금액: ${result.finalContractAmount ? Number(result.finalContractAmount).toLocaleString() : '0'}원
+상세계약금액/메모:
 ${result.contractAmount || '-'}
 
-상담내용:
-${result.consultationContent || '-'}
+계약과정 및 상담내용:
+${result.consultationContent || '-'}` :
+        result.status === '미계약' ? `미계약사유: ${result.reason || '-'}
+상담/조치 내용:
+${result.consultationContent || '-'}` :
+          `상담 내용:
+${result.consultationContent || '-'}`}
     `.trim();
     navigator.clipboard.writeText(info);
   }, [result]);
@@ -3234,22 +3244,22 @@ const ConsultationModal = ({ record, onClose, onSave, reasons, onAddComment, onD
 
   const handleCopyAllInfo = () => {
     const info = `
-[고객 정보]
-성함: ${customerInfo.customerName}
-연락처: ${customerInfo.customerContact}
-예약일: ${customerInfo.reservationDate} ${customerInfo.reservationTime}
-상담자: ${customerInfo.salesperson || '미지정'}
-
 [상담 결과]
-상태: ${status}
-${status === '계약' ? `결제금액: ${formatWithCommas(formData.finalContractAmount)}원\n계약상세: ${formData.contractAmount}` : ''}
-${status === '미계약' ? `미계약사유: ${formData.reason}` : ''}
-상담내용: ${formData.consultationContent}
+상태: ${status === '계약' ? '계약완료' : status}
+지점: ${record.branch}
+상담자: ${record.salesperson || '미지정'}
 
-[상담 히스토리]
-${[...(record.consultationLogs || []), ...(record.comments || []).map((c) => (typeof c === 'object' ? c.text : c))]
-        .filter(log => typeof log === 'string' && !log.includes('[object Object]'))
-        .map(log => `- ${log}`).join('\n')}
+${status === '계약' ? `최종결제금액: ${formatWithCommas(formData.finalContractAmount)}원
+상세계약금액/메모:
+${formData.contractAmount || '-'}
+
+계약과정 및 상담내용:
+${formData.consultationContent || '-'}` :
+        status === '미계약' ? `미계약사유: ${formData.reason || '-'}
+상담/조치 내용:
+${formData.consultationContent || '-'}` :
+          `상담 내용:
+${formData.consultationContent || '-'}`}
     `.trim();
 
     navigator.clipboard.writeText(info).then(() => {
