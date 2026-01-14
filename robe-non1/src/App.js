@@ -1153,10 +1153,10 @@ function Dashboard({ user }) {
     const totalWeekStats = getFilteredStats(totalWeekOffset, 'week', false);
     const totalMonthStats = getFilteredStats(totalMonthOffset, 'month', false);
 
-    // Trend comparisons: Weekly compare with same week last month (-4), Monthly compare with prev month (-1)
-    const lureWeekPrev = getFilteredStats(lureWeekOffset - 4, 'week', true);
+    // Trend comparisons: Weekly compare with prev week (-1), Monthly compare with prev month (-1)
+    const lureWeekPrev = getFilteredStats(lureWeekOffset - 1, 'week', true);
     const lureMonthPrev = getFilteredStats(lureMonthOffset - 1, 'month', true);
-    const totalWeekPrev = getFilteredStats(totalWeekOffset - 4, 'week', false);
+    const totalWeekPrev = getFilteredStats(totalWeekOffset - 1, 'week', false);
     const totalMonthPrev = getFilteredStats(totalMonthOffset - 1, 'month', false);
 
     const lureWeekTrend = getTrend(lureWeekStats, lureWeekPrev);
