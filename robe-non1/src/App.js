@@ -27,7 +27,7 @@ const appId = firebaseConfig.appId;
 
 
 // --- Main App Component ---
-function Dashboard({ user }) {
+function Dashboard({ user, userRole }) {
   const [db, setDb] = useState(null);
   // --- Integrated CRM State ---
   const [customerRecords, setCustomerRecords] = useState([]); // Unified records
@@ -1646,13 +1646,15 @@ function Dashboard({ user }) {
               <div className="bg-white p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-center sticky top-20 z-10 gap-4">
                 <div className="flex items-center gap-4">
                   <h2 className="text-lg font-semibold text-gray-700">지점/상담자별 실적 비교 (3개월)</h2>
-                  <button
-                    onClick={handleDownloadReport}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-black hover:bg-blue-700 transition-all shadow-md active:scale-95"
-                  >
-                    <FileText className="w-4 h-4" />
-                    성과 보고서 (A4)
-                  </button>
+                  {userRole === 'admin' && (
+                    <button
+                      onClick={handleDownloadReport}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-black shadow-lg hover:bg-red-700 transition-all hover:scale-105 active:scale-95"
+                    >
+                      <Download className="w-4 h-4" />
+                      월간 보고서 다운로드 (A4)
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-xl shadow-inner">
                   <button onClick={() => setStatsMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))} className="p-1.5 bg-white rounded-lg shadow-sm hover:bg-gray-50 transition-colors"><ChevronLeft className="w-5 h-5" /></button>
@@ -1684,21 +1686,22 @@ function Dashboard({ user }) {
 
 
 
-              {/* Salesperson Overview Table */}
-              <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100">
-                <div className="mb-4 border-b border-gray-50 pb-2">
-                  <h3 className="text-lg font-black text-gray-800">상담자별 전체 통계</h3>
-                  <p className="text-[11px] font-bold text-gray-400 tracking-tighter">선택 월 기준 모든 상담자의 성과 지표입니다.</p>
+              {userRole === 'admin' && (
+                <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100">
+                  <div className="mb-4 border-b border-gray-50 pb-2">
+                    <h3 className="text-lg font-black text-gray-800">상담자별 전체 통계</h3>
+                    <p className="text-[11px] font-bold text-gray-400 tracking-tighter">선택 월 기준 모든 상담자의 성과 지표입니다.</p>
+                  </div>
+                  <MatrixTable
+                    data={dashboardData.salespersonStatsMatrix}
+                    title="상담자명"
+                    onRowClick={(name) => {
+                      setSelectedSalesperson(name);
+                      setShowPerformanceModal(true);
+                    }}
+                  />
                 </div>
-                <MatrixTable
-                  data={dashboardData.salespersonStatsMatrix}
-                  title="상담자명"
-                  onRowClick={(name) => {
-                    setSelectedSalesperson(name);
-                    setShowPerformanceModal(true);
-                  }}
-                />
-              </div>
+              )}
             </div>
 
           </div>
@@ -3620,13 +3623,17 @@ const PaginatedTable = ({ title, records, currentPage, setCurrentPage, columns, 
 function LoginComponent({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const CORRECT_PASSWORD = "0077";
+  const STAFF_PASSWORD = "0077";
+  const ADMIN_PASSWORD = "wjsfir2026";
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (password === CORRECT_PASSWORD) {
+    if (password === ADMIN_PASSWORD) {
       setError('');
-      onLogin();
+      onLogin('admin');
+    } else if (password === STAFF_PASSWORD) {
+      setError('');
+      onLogin('staff');
     } else {
       setError('비밀번호가 올바르지 않습니다.');
     }
@@ -3664,6 +3671,7 @@ export default function App() {
   const [auth, setAuth] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isPasswordAuthenticated, setIsPasswordAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
     const app = initializeApp(firebaseConfig);
@@ -3678,7 +3686,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  const handlePasswordLogin = async () => {
+  const handlePasswordLogin = async (role) => {
     if (auth && !user) {
       try {
         await signInAnonymously(auth);
@@ -3686,6 +3694,7 @@ export default function App() {
         console.error("Anonymous sign-in failed", error);
       }
     }
+    setUserRole(role);
     setIsPasswordAuthenticated(true);
   };
 
@@ -3693,7 +3702,7 @@ export default function App() {
     return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div></div>;
   }
 
-  return isPasswordAuthenticated && user ? <Dashboard user={user} /> : <LoginComponent onLogin={handlePasswordLogin} />;
+  return isPasswordAuthenticated && user ? <Dashboard user={user} userRole={userRole} /> : <LoginComponent onLogin={handlePasswordLogin} />;
 }
 
 const reasonColors = {
