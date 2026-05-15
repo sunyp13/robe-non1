@@ -3605,10 +3605,35 @@ const PaginatedTable = ({ title, records, currentPage, setCurrentPage, columns, 
   );
 };
 
+const KOREAN_HOLIDAYS_2026_2027 = [
+  '2026-01-01', '2026-02-16', '2026-02-17', '2026-02-18', '2026-03-01', '2026-03-02', 
+  '2026-05-05', '2026-05-24', '2026-05-25', '2026-06-06', '2026-08-15', '2026-08-17',
+  '2026-09-24', '2026-09-25', '2026-09-26', '2026-10-03', '2026-10-05', '2026-10-09', '2026-12-25',
+  '2027-01-01', '2027-02-06', '2027-02-07', '2027-02-08', '2027-03-01', '2027-05-05', '2027-05-13',
+  '2027-06-06', '2027-08-15', '2027-09-14', '2027-09-15', '2027-09-16', '2027-10-03', '2027-10-09', '2027-12-25'
+];
+
+const getDayHeaderColorClass = (index) => {
+  if (index === 6) return 'text-red-400';
+  if (index === 5) return 'text-blue-400';
+  return 'text-slate-300';
+};
+
+const getDateColorClass = (year, month, day) => {
+  const d = new Date(year, month, day);
+  const dayOfWeek = d.getDay();
+  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  if (KOREAN_HOLIDAYS_2026_2027.includes(dateStr) || dayOfWeek === 0) return 'text-red-400';
+  if (dayOfWeek === 6) return 'text-blue-400';
+  return 'text-slate-100';
+};
+
 function BranchScheduleEditor({ branch, db, onBack }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [allSchedules, setAllSchedules] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
+  const [touchStart, setTouchStart] = useState({ x: null, y: null });
+  const [touchEnd, setTouchEnd] = useState({ x: null, y: null });
 
   const defaultTimes = ["11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
 
@@ -3733,11 +3758,41 @@ function BranchScheduleEditor({ branch, db, onBack }) {
   };
 
   const navigateDate = (delta) => {
+    if (!selectedDate) return;
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + delta);
     const ds = d.toISOString().split('T')[0];
     if (d.getMonth() !== currentMonth.getMonth()) setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
     setSelectedDate(ds);
+  };
+
+  const handleTouchStart = (e) => {
+    setTouchEnd({ x: null, y: null });
+    setTouchStart({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
+  };
+  
+  const handleTouchMove = (e) => {
+    setTouchEnd({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart.x || !touchEnd.x) return;
+    const distanceX = touchStart.x - touchEnd.x;
+    const distanceY = Math.abs(touchStart.y - touchEnd.y);
+    if (Math.abs(distanceX) > distanceY && Math.abs(distanceX) > 40) {
+      if (distanceX > 0) navigateDate(1);
+      else navigateDate(-1);
+    }
+  };
+
+  const handleMonthTouchEnd = () => {
+    if (!touchStart.x || !touchEnd.x) return;
+    const distanceX = touchStart.x - touchEnd.x;
+    const distanceY = Math.abs(touchStart.y - touchEnd.y);
+    if (Math.abs(distanceX) > distanceY && Math.abs(distanceX) > 40) {
+      if (distanceX > 0) setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+      else setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+    }
   };
 
   const renderCalendar = () => {
@@ -3750,50 +3805,41 @@ function BranchScheduleEditor({ branch, db, onBack }) {
     for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
     return (
-      <div className="grid grid-cols-7 gap-1 sm:gap-2">
-        {['월', '화', '수', '목', '금', '토', '일'].map(d => (
-          <div key={d} className="text-center text-[10px] font-black text-slate-300 p-2 uppercase">{d}</div>
+      <div className="grid grid-cols-7 gap-[1px] bg-slate-800 rounded-none sm:rounded-2xl overflow-hidden border-y sm:border border-slate-800">
+        {['월', '화', '수', '목', '금', '토', '일'].map((d, i) => (
+          <div key={d} className={`text-center text-[10px] sm:text-xs font-black bg-slate-900 p-2 uppercase ${getDayHeaderColorClass(i)}`}>{d}</div>
         ))}
         {days.map((day, idx) => {
-          if (!day) return <div key={`empty-${idx}`} className="h-28 sm:h-32 bg-slate-50/30 rounded-2xl" />;
+          if (!day) return <div key={`empty-${idx}`} className="bg-slate-900 h-28 sm:h-32" />;
           const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const schedule = allSchedules[dateStr];
           const hasSlots = schedule?.slots?.length > 0;
           const isToday = dateStr === new Date().toISOString().split('T')[0];
           return (
-            <button key={day} onClick={() => setSelectedDate(dateStr)} className={`h-28 sm:h-32 rounded-2xl border transition-all flex flex-col p-3 text-left group overflow-hidden ${isToday ? 'border-amber-400 ring-1 ring-amber-400 bg-white' : hasSlots ? 'bg-white border-emerald-100 shadow-sm' : 'bg-slate-50/50 border-slate-100 opacity-60'} hover:border-emerald-400 hover:bg-white hover:shadow-lg active:scale-95`}>
-              <span className={`text-xs font-black ${isToday ? 'text-amber-600' : 'text-slate-700'}`}>{day}</span>
+            <button key={day} onClick={() => setSelectedDate(dateStr)} className={`bg-slate-900 ${isToday ? 'ring-inset ring-1 ring-amber-400' : ''} h-28 sm:h-32 flex flex-col p-1.5 sm:p-2 text-left active:bg-slate-800 transition-all group hover:bg-slate-800`}>
+              <span className={`text-[10px] sm:text-xs font-black ${isToday ? 'text-amber-400' : getDateColorClass(year, month, day)}`}>{day}</span>
               {hasSlots && (
-                <div className="mt-1.5 flex-1 overflow-hidden flex flex-col justify-between">
-                  <div className="space-y-[1px]">
-                    {schedule.slots.map((s, i) => (
-                      <div key={i} className="flex items-center justify-between gap-0.5 leading-none">
-                        <span className="text-[6px] font-black text-slate-300 scale-90 origin-left">{s.time.split(':')[0]}</span>
-                        <div className="flex gap-[0.5px]">
-                          {(() => {
-                            const totalStaff = schedule.totalDbCount || 3;
-                            const slots = [];
-                            for (let dotIdx = 0; dotIdx < 3; dotIdx++) {
-                              const isOutOfStaff = dotIdx >= totalStaff;
-                              const isDisabled = (s.disabledIndices || []).includes(dotIdx);
-                              const isBooked = dotIdx < (s.booked || 0);
-                              if (!isOutOfStaff && !isDisabled) slots.push({ type: 'open', booked: isBooked });
-                            }
-                            return (
-                              <div className="flex gap-[0.5px]">
-                                {slots.map((sl, idx) => (
-                                  <div key={idx} className={`w-[4px] h-[4px] rounded-full ${sl.booked ? 'bg-slate-300' : 'bg-emerald-400'}`} />
-                                ))}
-                                {Array.from({ length: totalStaff - slots.length }).map((_, idx) => (
-                                  <div key={idx} className="w-[3px] h-[1px] bg-slate-200 rounded-full my-auto" />
-                                ))}
-                              </div>
-                            );
-                          })()}
-                        </div>
+                <div className="mt-1 flex-1 overflow-hidden space-y-[2px] w-full">
+                  {schedule.slots.map((s, i) => (
+                    <div key={i} className="flex items-center justify-between gap-0.5 leading-none">
+                      <span className="text-[8px] font-black text-slate-400 origin-left whitespace-nowrap">{s.time.split(':')[0]}</span>
+                      <div className="flex gap-[1px]">
+                        {(() => {
+                          const totalStaff = schedule.totalDbCount || 3;
+                          const slots = [];
+                          for (let dotIdx = 0; dotIdx < 3; dotIdx++) {
+                            const isOutOfStaff = dotIdx >= totalStaff;
+                            const isDisabled = (s.disabledIndices || []).includes(dotIdx);
+                            const isBooked = dotIdx < (s.booked || 0);
+                            if (!isOutOfStaff && !isDisabled) slots.push({ type: 'open', booked: isBooked });
+                          }
+                          return slots.map((sl, idx) => (
+                            <div key={idx} className={`w-[5px] h-[5px] rounded-full ${sl.booked ? 'bg-slate-300' : 'bg-emerald-500'}`} />
+                          ));
+                        })()}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </button>
@@ -3804,41 +3850,46 @@ function BranchScheduleEditor({ branch, db, onBack }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col p-4 sm:p-8">
+    <div className="min-h-screen bg-slate-50 flex flex-col p-0 sm:p-8">
       {selectedDate && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-hidden">
-          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50 shrink-0">
-              <div className="flex items-center gap-4">
-                <button onClick={() => navigateDate(-1)} className="p-2 hover:bg-white rounded-xl transition-all"><ChevronLeft className="w-5 h-5 text-slate-400" /></button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-hidden">
+          <div 
+            className="bg-white w-full max-w-md rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh] animate-in zoom-in-95 duration-200"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="p-5 sm:p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <button onClick={() => navigateDate(-1)} className="p-1 sm:p-2 hover:bg-white rounded-xl transition-all"><ChevronLeft className="w-5 h-5 text-slate-400" /></button>
                 <div>
-                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{branch}</div>
-                  <h3 className="text-2xl font-black text-slate-800">{selectedDate.replace(/-/g, '. ')}.</h3>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 sm:mb-1">{branch}</div>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-800">{selectedDate.replace(/-/g, '. ')}.</h3>
+                  <div className="flex items-center gap-1 sm:gap-2 mt-1">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[11px] font-black text-emerald-600 uppercase tracking-tight">당일 가능 상담 개수 {totalAvailableCount}개</span>
+                    <span className="text-[10px] sm:text-[11px] font-black text-emerald-600 uppercase tracking-tight">당일 가능 상담 개수 {totalAvailableCount}개</span>
                   </div>
                 </div>
-                <button onClick={() => navigateDate(1)} className="p-2 hover:bg-white rounded-xl transition-all"><ChevronRight className="w-5 h-5 text-slate-400" /></button>
+                <button onClick={() => navigateDate(1)} className="p-1 sm:p-2 hover:bg-white rounded-xl transition-all"><ChevronRight className="w-5 h-5 text-slate-400" /></button>
               </div>
-              <button onClick={() => setSelectedDate(null)} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm"><X className="w-6 h-6 text-slate-400" /></button>
+              <button onClick={() => setSelectedDate(null)} className="p-2 sm:p-3 bg-white rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm"><X className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" /></button>
             </div>
 
-            <div className="p-8 overflow-y-auto flex-1">
-              <div className="bg-slate-50 p-6 rounded-[2.5rem] space-y-6 mb-8 shrink-0">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] font-black text-slate-400 uppercase mb-1">동시간대 상담가능 개수 설정</div>
-                    <div className="text-2xl font-black text-slate-800">{activeSchedule?.totalDbCount || 3}개 설정</div>
+            <div className="p-4 sm:p-8 overflow-y-auto flex-1">
+              <div className="bg-slate-50 p-5 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] space-y-4 sm:space-y-6 mb-6 sm:mb-8 shrink-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="text-[10px] font-black text-slate-400 uppercase mb-1 whitespace-nowrap">동시간대 상담가능 개수 설정</div>
+                    <div className="text-xl sm:text-2xl font-black text-slate-800">{activeSchedule?.totalDbCount || 3}개 설정</div>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => updateAllCapacities(selectedDate, Math.max(1, (activeSchedule?.totalDbCount || 3) - 1))} className="w-12 h-12 bg-white rounded-2xl border border-slate-200 flex items-center justify-center shadow-sm active:scale-90 transition-all text-slate-400 hover:text-emerald-600 hover:border-emerald-200"><ChevronDown className="w-6 h-6" /></button>
-                    <button onClick={() => updateAllCapacities(selectedDate, Math.min(3, (activeSchedule?.totalDbCount || 3) + 1))} className="w-12 h-12 bg-white rounded-2xl border border-slate-200 flex items-center justify-center shadow-sm active:scale-90 transition-all text-slate-400 hover:text-emerald-600 hover:border-emerald-200"><ChevronUp className="w-6 h-6" /></button>
+                  <div className="flex gap-1.5 sm:gap-2">
+                    <button onClick={() => updateAllCapacities(selectedDate, Math.max(1, (activeSchedule?.totalDbCount || 3) - 1))} className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-xl sm:rounded-2xl border border-slate-200 flex items-center justify-center shadow-sm active:scale-90 transition-all text-slate-400 hover:text-emerald-600 hover:border-emerald-200"><ChevronDown className="w-5 h-5 sm:w-6 sm:h-6" /></button>
+                    <button onClick={() => updateAllCapacities(selectedDate, Math.min(3, (activeSchedule?.totalDbCount || 3) + 1))} className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-xl sm:rounded-2xl border border-slate-200 flex items-center justify-center shadow-sm active:scale-90 transition-all text-slate-400 hover:text-emerald-600 hover:border-emerald-200"><ChevronUp className="w-5 h-5 sm:w-6 sm:h-6" /></button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => closeWholeDay(selectedDate)} className="py-4 bg-white border border-rose-100 text-rose-500 rounded-2xl font-black text-xs hover:bg-rose-50 transition-all flex items-center justify-center gap-2 shadow-sm"><XCircle className="w-4 h-4" /> 전체 마감</button>
-                  <button onClick={() => openWholeDay(selectedDate)} className="py-4 bg-white border border-emerald-100 text-emerald-600 rounded-2xl font-black text-xs hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-sm"><CheckCircle2 className="w-4 h-4" /> 전체 열기</button>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <button onClick={() => closeWholeDay(selectedDate)} className="py-3 sm:py-4 bg-white border border-rose-100 text-rose-500 rounded-xl sm:rounded-2xl font-black text-[11px] sm:text-xs hover:bg-rose-50 transition-all flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm"><XCircle className="w-4 h-4" /> 전체 마감</button>
+                  <button onClick={() => openWholeDay(selectedDate)} className="py-3 sm:py-4 bg-white border border-emerald-100 text-emerald-600 rounded-xl sm:rounded-2xl font-black text-[11px] sm:text-xs hover:bg-emerald-50 transition-all flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm"><CheckCircle2 className="w-4 h-4" /> 전체 열기</button>
                 </div>
               </div>
 
@@ -3850,17 +3901,17 @@ function BranchScheduleEditor({ branch, db, onBack }) {
                   const avail = (activeSchedule?.totalDbCount || 3) - (slot.disabledIndices?.length || 0);
 
                   return (
-                    <div key={time} className={`p-5 rounded-[2rem] border-2 transition-all flex flex-col gap-4 ${isOpen ? 'border-emerald-500 bg-emerald-50/50 shadow-sm' : 'border-slate-200 bg-slate-100/80 opacity-60'}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-3 flex-1">
-                          <div className="flex items-center gap-3">
-                            <div className={`text-xl font-black ${isOpen ? 'text-emerald-900' : 'text-slate-400'}`}>{time}</div>
+                    <div key={time} className={`p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] border-2 transition-all flex flex-col gap-3 sm:gap-4 ${isOpen ? 'border-emerald-500 bg-emerald-50/50 shadow-sm' : 'border-slate-200 bg-slate-100/80 opacity-60'}`}>
+                      <div className="flex flex-row items-center justify-between gap-2">
+                        <div className="flex flex-col gap-2.5 sm:gap-3 flex-1">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <div className={`text-lg sm:text-xl font-black ${isOpen ? 'text-emerald-900' : 'text-slate-400'}`}>{time}</div>
                             <div className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${isOpen ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-400'}`}>
                               {bookedCount > 0 ? `기존 ${bookedCount}건 예약됨` : `${avail}개 가능`}
                             </div>
                             {bookedCount > 0 && <div className="text-[9px] font-bold text-amber-500 flex items-center gap-1 animate-pulse"><div className="w-1 h-1 rounded-full bg-amber-500" /> 보호됨</div>}
                           </div>
-                          <div className="flex flex-wrap gap-2.5">
+                          <div className="flex flex-wrap gap-1.5 sm:gap-2.5">
                             {(() => {
                               const staff = activeSchedule?.totalDbCount || 3;
                               const active = [];
@@ -3877,21 +3928,21 @@ function BranchScheduleEditor({ branch, db, onBack }) {
                               return (
                                 <>
                                   {active.map((as, idx) => (
-                                    <button key={`act-${idx}`} disabled={as.booked} onClick={() => toggleIndividualSlot(selectedDate, time, as.index)} className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black transition-all active:scale-90 shadow-md ${as.booked ? 'bg-slate-300 text-white cursor-not-allowed' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}>{idx + 1}</button>
+                                    <button key={`act-${idx}`} disabled={as.booked} onClick={() => toggleIndividualSlot(selectedDate, time, as.index)} className={`w-[36px] h-[36px] sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center text-xs sm:text-sm font-black transition-all active:scale-90 shadow-md ${as.booked ? 'bg-slate-300 text-white cursor-not-allowed' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}>{idx + 1}</button>
                                   ))}
                                   {closed.map((cs, idx) => (
-                                    <button key={`cls-${idx}`} onClick={() => toggleIndividualSlot(selectedDate, time, cs)} className="px-5 h-12 bg-white border-2 border-slate-200 text-slate-400 rounded-2xl text-xs font-black hover:border-emerald-200 transition-all flex items-center justify-center">마감</button>
+                                    <button key={`cls-${idx}`} onClick={() => toggleIndividualSlot(selectedDate, time, cs)} className="px-3 sm:px-5 h-[36px] sm:h-12 bg-white border-2 border-slate-200 text-slate-400 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black hover:border-emerald-200 transition-all flex items-center justify-center">마감</button>
                                   ))}
                                   {hidden.map((os, idx) => (
-                                    <div key={`hid-${idx}`} className="w-12 h-12 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex items-center justify-center opacity-20"><div className="w-1.5 h-1.5 bg-slate-300 rounded-full" /></div>
+                                    <div key={`hid-${idx}`} className="w-[36px] h-[36px] sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex items-center justify-center opacity-20"><div className="w-1.5 h-1.5 bg-slate-300 rounded-full" /></div>
                                   ))}
                                 </>
                               );
                             })()}
                           </div>
                         </div>
-                        <div className="shrink-0">
-                          <button onClick={() => toggleSlot(selectedDate, time)} disabled={bookedCount > 0} className={`px-4 py-3 rounded-2xl font-black text-xs transition-all active:scale-95 whitespace-nowrap ${bookedCount > 0 ? 'bg-slate-50 text-slate-200 cursor-not-allowed border border-slate-100' : isOpen ? 'bg-white text-rose-500 border-2 border-rose-100 hover:bg-rose-50 shadow-sm' : 'bg-slate-800 text-white shadow-lg hover:bg-black'}`}>{bookedCount > 0 ? '수정 불가' : isOpen ? '시간 마감' : '시간 열기'}</button>
+                        <div className="shrink-0 ml-auto">
+                          <button onClick={() => toggleSlot(selectedDate, time)} disabled={bookedCount > 0} className={`px-2.5 py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs transition-all active:scale-95 whitespace-nowrap ${bookedCount > 0 ? 'bg-slate-50 text-slate-200 cursor-not-allowed border border-slate-100' : isOpen ? 'bg-white text-rose-500 border-2 border-rose-100 hover:bg-rose-50 shadow-sm' : 'bg-slate-800 text-white shadow-lg hover:bg-black'}`}>{bookedCount > 0 ? '불가' : isOpen ? '시간 마감' : '시간 열기'}</button>
                         </div>
                       </div>
                     </div>
@@ -3900,7 +3951,7 @@ function BranchScheduleEditor({ branch, db, onBack }) {
               </div>
             </div>
             
-            <div className="p-8 bg-slate-50 border-t border-slate-100 shrink-0">
+            <div className="p-4 sm:p-8 bg-slate-50 border-t border-slate-100 shrink-0 rounded-b-[2rem] sm:rounded-b-[2.5rem]">
               <button 
                 onClick={() => {
                   if (selectedDate) {
@@ -3909,7 +3960,7 @@ function BranchScheduleEditor({ branch, db, onBack }) {
                   }
                   setSelectedDate(null);
                 }} 
-                className="w-full py-5 bg-slate-800 text-white rounded-[2rem] font-black shadow-xl hover:bg-black transition-all"
+                className="w-full py-4 sm:py-5 bg-slate-800 text-white rounded-2xl sm:rounded-[2rem] font-black shadow-xl hover:bg-black transition-all"
               >
                 설정 저장 및 닫기
               </button>
@@ -3918,24 +3969,32 @@ function BranchScheduleEditor({ branch, db, onBack }) {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto w-full">
-        <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+      <div className="max-w-7xl mx-auto w-full flex flex-col flex-1">
+        <header className="flex flex-col md:flex-row md:items-center justify-between p-4 sm:p-0 mb-4 sm:mb-8 gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-4 bg-slate-800 rounded-2xl shadow-xl"><Settings className="text-white w-8 h-8" /></div>
+            <div className="p-3 sm:p-4 bg-slate-800 rounded-2xl shadow-xl"><Settings className="text-white w-6 h-6 sm:w-8 sm:h-8" /></div>
             <div>
-              <h2 className="text-3xl font-black text-slate-800 tracking-tight">{branch} 일정 설정</h2>
-              <p className="text-slate-400 font-bold text-sm">상담 가능 시간을 활성화하고 동그라미(개수)를 설정하세요.</p>
+              <h2 className="text-xl sm:text-3xl font-black text-slate-800 tracking-tight">{branch} 일정 설정</h2>
+              <p className="text-slate-400 font-bold text-xs sm:text-sm">상담 가능 시간을 활성화하고 동그라미(개수)를 설정하세요.</p>
             </div>
           </div>
-          <button onClick={onBack} className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:bg-slate-50 transition-all"><Undo2 className="w-6 h-6 text-slate-400" /></button>
+          <button onClick={onBack} className="p-3 sm:p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:bg-slate-50 transition-all"><Undo2 className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" /></button>
         </header>
 
-        <div className="bg-white p-8 rounded-[3rem] shadow-xl border border-slate-100">
-          <div className="flex items-center justify-between mb-10">
-            <h3 className="text-2xl font-black text-slate-800 flex items-center gap-4">{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</h3>
-            <div className="flex gap-2">
-              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="p-3 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-all"><ChevronLeft className="w-6 h-6 text-slate-600" /></button>
-              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="p-3 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-all"><ChevronRight className="w-6 h-6 text-slate-600" /></button>
+        <div 
+          className="bg-slate-900 p-0 sm:p-8 rounded-none sm:rounded-[3rem] shadow-xl sm:border border-slate-800 flex-1 flex flex-col pb-4"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleMonthTouchEnd}
+        >
+          <div className="flex items-center justify-between mb-4 sm:mb-10 px-4 sm:px-0 pt-4 sm:pt-0">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <h3 className="text-xl sm:text-2xl font-black text-white flex items-center">{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</h3>
+              <button onClick={() => setCurrentMonth(new Date())} className="px-3 sm:px-4 py-1.5 sm:py-2 hover:bg-slate-800 rounded-xl sm:rounded-2xl transition-all text-xs sm:text-sm font-black text-slate-300 border border-slate-700 active:bg-slate-700">오늘</button>
+            </div>
+            <div className="flex gap-1 sm:gap-2">
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="p-2 sm:p-3 hover:bg-slate-800 rounded-xl sm:rounded-2xl transition-all active:bg-slate-700"><ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" /></button>
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="p-2 sm:p-3 hover:bg-slate-800 rounded-xl sm:rounded-2xl transition-all active:bg-slate-700"><ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" /></button>
             </div>
           </div>
           {renderCalendar()}
@@ -3954,6 +4013,46 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
   const [now, setNow] = useState(new Date());
   const [isMyBookingsOpen, setIsMyBookingsOpen] = useState(false);
   const [allGlobalSchedules, setAllGlobalSchedules] = useState([]);
+  const [touchStart, setTouchStart] = useState({ x: null, y: null });
+  const [touchEnd, setTouchEnd] = useState({ x: null, y: null });
+
+  const navigateDate = (delta) => {
+    if (!selectedDate) return;
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + delta);
+    const ds = d.toISOString().split('T')[0];
+    if (d.getMonth() !== currentMonth.getMonth()) setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+    setSelectedDate(ds);
+  };
+
+  const handleTouchStart = (e) => {
+    setTouchEnd({ x: null, y: null });
+    setTouchStart({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
+  };
+  
+  const handleTouchMove = (e) => {
+    setTouchEnd({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart.x || !touchEnd.x) return;
+    const distanceX = touchStart.x - touchEnd.x;
+    const distanceY = Math.abs(touchStart.y - touchEnd.y);
+    if (Math.abs(distanceX) > distanceY && Math.abs(distanceX) > 40) {
+      if (distanceX > 0) navigateDate(1);
+      else navigateDate(-1);
+    }
+  };
+
+  const handleMonthTouchEnd = () => {
+    if (!touchStart.x || !touchEnd.x) return;
+    const distanceX = touchStart.x - touchEnd.x;
+    const distanceY = Math.abs(touchStart.y - touchEnd.y);
+    if (Math.abs(distanceX) > distanceY && Math.abs(distanceX) > 40) {
+      if (distanceX > 0) setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+      else setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+    }
+  };
 
   useEffect(() => {
     if (!db) return;
@@ -4058,18 +4157,26 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
   const renderSlotDots = (dateStr, slot, slotIndex) => {
     const schedule = branchSchedules[dateStr];
     if (!schedule) return null;
-    const activeHolds = (schedule.holds || []).filter(h => h.expiresAt.toDate() > now);
+    const activeHolds = (schedule.holds || []).filter(h => h.expiresAt.toDate() > now && h.slotIndex === slotIndex);
     const disabled = slot.disabledIndices || [];
     const dots = [];
+    let pendingCount = activeHolds.length;
     for (let i = 0; i < 3; i++) {
-      if (i < (slot.booked || 0)) dots.push('booked');
-      else if (disabled.includes(i)) dots.push('disabled');
-      else dots.push(activeHolds.some(h => h.slotIndex === slotIndex) ? 'pending' : 'available');
+      if (i < (slot.booked || 0)) {
+        dots.push('booked');
+      } else if (disabled.includes(i)) {
+        dots.push('disabled');
+      } else if (pendingCount > 0) {
+        dots.push('pending');
+        pendingCount--;
+      } else {
+        dots.push('available');
+      }
     }
     return (
-      <div className="flex gap-[0.5px]">
+      <div className="flex gap-[1px]">
         {dots.map((type, i) => type !== 'disabled' && (
-          <div key={i} className={`w-[3px] h-[3px] rounded-full ${type === 'booked' ? 'bg-slate-300' : type === 'pending' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
+          <div key={i} className={`w-[5px] h-[5px] rounded-full ${type === 'booked' ? 'bg-slate-300' : type === 'pending' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
         ))}
       </div>
     );
@@ -4085,22 +4192,22 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
     for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
     return (
-      <div className="grid grid-cols-7 gap-1 sm:gap-2">
-        {['월', '화', '수', '목', '금', '토', '일'].map(d => (
-          <div key={d} className="text-center text-[10px] font-black text-slate-400 p-2 uppercase">{d}</div>
+      <div className="grid grid-cols-7 gap-[1px] bg-slate-800 rounded-none sm:rounded-2xl overflow-hidden border-y sm:border border-slate-800">
+        {['월', '화', '수', '목', '금', '토', '일'].map((d, i) => (
+          <div key={d} className={`text-center text-[10px] sm:text-xs font-black bg-slate-900 p-2 uppercase ${getDayHeaderColorClass(i)}`}>{d}</div>
         ))}
         {days.map((day, idx) => {
-          if (!day) return <div key={`empty-${idx}`} className="bg-slate-50/20 rounded-lg h-24 sm:h-32" />;
+          if (!day) return <div key={`empty-${idx}`} className="bg-slate-900 h-28 sm:h-32" />;
           const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const schedule = branchSchedules[dateStr];
           const isToday = dateStr === new Date().toISOString().split('T')[0];
           return (
-            <button key={day} onClick={() => setSelectedDate(dateStr)} className={`bg-white rounded-xl border ${isToday ? 'border-amber-400 ring-1 ring-amber-400' : 'border-slate-100'} h-24 sm:h-32 flex flex-col p-2 text-left active:scale-95 transition-all group hover:border-emerald-400`}>
-              <span className={`text-xs font-black ${isToday ? 'text-amber-600' : 'text-slate-700'}`}>{day}</span>
-              <div className="mt-1 flex-1 overflow-hidden space-y-[1px]">
+            <button key={day} onClick={() => setSelectedDate(dateStr)} className={`bg-slate-900 ${isToday ? 'ring-inset ring-1 ring-amber-400' : ''} h-28 sm:h-32 flex flex-col p-1.5 sm:p-2 text-left active:bg-slate-800 transition-all group hover:bg-slate-800`}>
+              <span className={`text-[10px] sm:text-xs font-black ${isToday ? 'text-amber-400' : getDateColorClass(year, month, day)}`}>{day}</span>
+              <div className="mt-1 flex-1 overflow-hidden space-y-[2px] w-full">
                 {(schedule?.slots || []).map((slot, sIdx) => (
                   <div key={sIdx} className="flex items-center justify-between gap-0.5 leading-none">
-                    <span className="text-[6px] font-black text-slate-300 scale-90 origin-left">{slot.time.split(':')[0]}</span>
+                    <span className="text-[8px] font-black text-slate-400 origin-left whitespace-nowrap">{slot.time.split(':')[0]}</span>
                     {renderSlotDots(dateStr, slot, sIdx)}
                   </div>
                 ))}
@@ -4113,30 +4220,25 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col p-2 sm:p-8">
+    <div className="min-h-screen bg-slate-50 flex flex-col p-0 sm:p-8">
       {selectedDate && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
-          <div className="bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-10 duration-300">
-            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-              <div className="flex items-center gap-4">
-                <button onClick={() => {
-                  const d = new Date(selectedDate); d.setDate(d.getDate() - 1);
-                  const ds = d.toISOString().split('T')[0];
-                  if (d.getMonth() !== currentMonth.getMonth()) setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
-                  setSelectedDate(ds);
-                }} className="p-2 hover:bg-white rounded-xl transition-all"><ChevronLeft className="w-5 h-5 text-slate-400" /></button>
+          <div 
+            className="bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-10 duration-300"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="p-5 sm:p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <button onClick={() => navigateDate(-1)} className="p-1 sm:p-2 hover:bg-white rounded-xl transition-all"><ChevronLeft className="w-5 h-5 text-slate-400" /></button>
                 <div>
-                  <div className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">{selectedBranch} 지점</div>
-                  <h3 className="text-2xl font-black text-slate-800">{selectedDate.replace(/-/g, '. ')}.</h3>
+                  <div className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-0.5 sm:mb-1">{selectedBranch} 지점</div>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-800">{selectedDate.replace(/-/g, '. ')}.</h3>
                 </div>
-                <button onClick={() => {
-                  const d = new Date(selectedDate); d.setDate(d.getDate() + 1);
-                  const ds = d.toISOString().split('T')[0];
-                  if (d.getMonth() !== currentMonth.getMonth()) setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
-                  setSelectedDate(ds);
-                }} className="p-2 hover:bg-white rounded-xl transition-all"><ChevronRight className="w-5 h-5 text-slate-400" /></button>
+                <button onClick={() => navigateDate(1)} className="p-1 sm:p-2 hover:bg-white rounded-xl transition-all"><ChevronRight className="w-5 h-5 text-slate-400" /></button>
               </div>
-              <button onClick={() => setSelectedDate(null)} className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100"><X className="w-6 h-6 text-slate-400" /></button>
+              <button onClick={() => setSelectedDate(null)} className="p-2 sm:p-3 bg-white rounded-xl sm:rounded-2xl shadow-sm border border-slate-100"><X className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" /></button>
             </div>
             
             <div className="p-6 overflow-y-auto">
@@ -4205,8 +4307,8 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto w-full">
-        <header className="flex flex-col md:flex-row md:items-center justify-between mb-4 sm:mb-8 gap-4">
+      <div className="max-w-7xl mx-auto w-full flex flex-col flex-1">
+        <header className="flex flex-col md:flex-row md:items-center justify-between mb-4 sm:mb-8 gap-4 px-4 sm:px-0">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-emerald-600 rounded-2xl shadow-lg"><Calendar className="text-white w-6 h-6" /></div>
             <div>
@@ -4229,19 +4331,23 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
           </div>
         </header>
 
-        <div className="bg-white p-4 sm:p-8 rounded-[2rem] shadow-xl border border-slate-100">
-          <div className="flex items-center justify-between mb-6 sm:mb-10">
-            <h3 className="text-lg font-black text-slate-800 flex items-center gap-3">
-              {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월
-              <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] rounded-full border border-emerald-100">{selectedBranch}</span>
-            </h3>
-            <div className="flex gap-1">
-              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="p-2 hover:bg-slate-50 rounded-xl border border-slate-100 transition-all"><ChevronLeft className="w-5 h-5 text-slate-600" /></button>
-              <button onClick={() => setCurrentMonth(new Date())} className="px-4 py-2 font-black text-slate-600 hover:bg-slate-50 rounded-xl border border-slate-100 text-xs transition-all">오늘</button>
-              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="p-2 hover:bg-slate-50 rounded-xl border border-slate-100 transition-all"><ChevronRight className="w-5 h-5 text-slate-600" /></button>
+        <div 
+          className="bg-slate-900 p-0 sm:p-8 rounded-none sm:rounded-[3rem] shadow-xl sm:border border-slate-800 relative flex-1 flex flex-col pb-4"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleMonthTouchEnd}
+        >
+          <div className="flex items-center justify-between mb-4 sm:mb-10 px-4 sm:px-0 pt-4 sm:pt-0">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <h3 className="text-xl sm:text-2xl font-black text-white flex items-center">{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</h3>
+              <button onClick={() => setCurrentMonth(new Date())} className="px-3 sm:px-4 py-1.5 sm:py-2 hover:bg-slate-800 rounded-xl sm:rounded-2xl transition-all text-xs sm:text-sm font-black text-slate-300 border border-slate-700 active:bg-slate-700">오늘</button>
+            </div>
+            <div className="flex gap-1 sm:gap-2">
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="p-2 sm:p-3 hover:bg-slate-800 rounded-xl sm:rounded-2xl transition-all active:bg-slate-700"><ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" /></button>
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="p-2 sm:p-3 hover:bg-slate-800 rounded-xl sm:rounded-2xl transition-all active:bg-slate-700"><ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" /></button>
             </div>
           </div>
-          {loading ? <div className="py-40 flex flex-col items-center justify-center"><div className="w-12 h-12 border-4 border-slate-100 border-t-emerald-600 rounded-full animate-spin"></div></div> : renderCalendarGrid()}
+          {loading ? <div className="py-40 flex flex-col items-center justify-center"><div className="w-12 h-12 border-4 border-slate-800 border-t-emerald-500 rounded-full animate-spin"></div></div> : renderCalendarGrid()}
         </div>
       </div>
 
