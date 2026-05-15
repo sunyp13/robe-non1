@@ -5,12 +5,19 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import {
   getFirestore, collection, addDoc, onSnapshot,
   query, orderBy, deleteDoc, doc, updateDoc,
-  getDoc, setDoc, arrayUnion, getDocs, deleteField
+  getDoc, setDoc, arrayUnion, getDocs, deleteField, where
 } from 'firebase/firestore';
 
 // Lucide React for icons
 
-import { ClipboardList, UserRound, ArrowUp, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2, Copy, Phone, Undo2, History, AlertTriangle, Edit, Lock, Search, ChevronDown, ChevronUp, Calendar, Settings, X, BookOpen, BarChart2, TrendingUp, TrendingDown, Minus, Trophy, RefreshCcw, User, MousePointer2, FileText, Download, ArrowUpRight, ArrowDownRight, CheckCircle2, Maximize2 } from 'lucide-react';
+import { 
+  ClipboardList, UserRound, ArrowUp, MessageSquare, Plus, ChevronLeft, ChevronRight, 
+  Trash2, Copy, Phone, Undo2, History, AlertTriangle, Edit, Lock, Search, 
+  ChevronDown, ChevronUp, Calendar, Settings, X, BookOpen, BarChart2, TrendingUp, 
+  TrendingDown, Minus, Trophy, RefreshCcw, User, MousePointer2, FileText, Download, 
+  ArrowUpRight, ArrowDownRight, CheckCircle2, Maximize2, LayoutDashboard, ArrowRight, 
+  Smartphone, XCircle 
+} from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -27,8 +34,7 @@ const appId = firebaseConfig.appId;
 
 
 // --- Main App Component ---
-function Dashboard({ user, userRole }) {
-  const [db, setDb] = useState(null);
+function Dashboard({ user, userRole, db, branches, setBranches }) {
   // --- Integrated CRM State ---
   const [customerRecords, setCustomerRecords] = useState([]); // Unified records
   const [newCustomerForm, setNewCustomerForm] = useState({
@@ -172,7 +178,6 @@ function Dashboard({ user, userRole }) {
 
   const [sources, setSources] = useState(['워크인', '박람회', '루어', '지인소개', '크라우드', '기타']);
   const [reasons, setReasons] = useState(['가격 문제', '비교 방문', '고객 변심', '의견 불일치', '기타', '노쇼']);
-  const [branches, setBranches] = useState(['도산', '광교', '구월', '노원', '대전', '부산', '성수', '수원', '압구정', '인천', '잠실']);
 
   // -- Separate state for Header Dropdown vs Actual Modal --
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
@@ -198,36 +203,7 @@ function Dashboard({ user, userRole }) {
 
 
 
-  useEffect(() => {
-    const app = initializeApp(firebaseConfig);
-    const firestoreDb = getFirestore(app);
-    setDb(firestoreDb);
-  }, []);
-
-  useEffect(() => {
-    if (!db) return;
-    const settingsCollectionPath = `artifacts/${appId}/public/data/dashboard_settings`;
-
-    const unsubSources = onSnapshot(doc(db, settingsCollectionPath, 'sources'), (doc) => {
-      if (doc.exists() && doc.data().items) setSources(doc.data().items);
-    });
-    const unsubReasons = onSnapshot(doc(db, settingsCollectionPath, 'reasons'), (doc) => {
-      if (doc.exists() && doc.data().items) {
-        const fetchedReasons = doc.data().items;
-        if (!fetchedReasons.includes('노쇼')) fetchedReasons.push('노쇼');
-        setReasons(fetchedReasons);
-      }
-    });
-    const unsubBranches = onSnapshot(doc(db, settingsCollectionPath, 'branches'), (doc) => {
-      if (doc.exists() && doc.data().items) setBranches(doc.data().items);
-    });
-
-    return () => {
-      unsubSources();
-      unsubReasons();
-      unsubBranches();
-    };
-  }, [db]);
+  // useEffects for db and settings moved to App component
 
   // --- Fetch Data (Integrated) ---
   useEffect(() => {
@@ -1645,7 +1621,7 @@ function Dashboard({ user, userRole }) {
               {/* Chart Header & Controls */}
               <div className="bg-white p-4 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-center sticky top-20 z-10 gap-4">
                 <div className="flex items-center gap-4">
-                  <h2 className="text-lg font-semibold text-gray-700">지점/상담자별 실적 비교 (3개월)</h2>
+                  <h2 className="text-lg font-semibold text-gray-700">지점/상담자별 실적 비교 (선택 월 성과)</h2>
                   {userRole === 'admin' && (
                     <button
                       onClick={handleDownloadReport}
@@ -3205,6 +3181,15 @@ const unformatCommas = (val) => {
 };
 
 const ConsultationModal = ({ record, onClose, onSave, reasons, onAddComment, onDeleteComment, newCommentText, setNewCommentText }) => {
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (record) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [record]);
   const [status, setStatus] = useState((record.status === '대기' || !record.status) ? '계약' : record.status);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(true);
@@ -3528,7 +3513,7 @@ ${formData.consultationContent || '-'}`}
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-red-900 mb-1">상담/조치 내용</label>
-                        <textarea name="consultationContent" value={formData.consultationContent} onChange={handleChange} rows="3" className="w-full p-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="예)상담시간 60분 등"></textarea>
+                                                <textarea name="consultationContent" value={formData.consultationContent} onChange={handleChange} rows="3" className="w-full p-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="예)상담시간 60분 등"></textarea>
                       </div>
                     </div>
                   )}
@@ -3620,7 +3605,916 @@ const PaginatedTable = ({ title, records, currentPage, setCurrentPage, columns, 
   );
 };
 
-function LoginComponent({ onLogin }) {
+function BranchScheduleEditor({ branch, db, onBack }) {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [allSchedules, setAllSchedules] = useState({});
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  const defaultTimes = ["11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
+
+  useEffect(() => {
+    if (!db || !branch) return;
+    const q = query(collection(db, `artifacts/${appId}/public/data/fair_schedules`), where("branchName", "==", branch));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const mapped = {};
+      snapshot.docs.forEach(doc => { mapped[doc.data().date] = doc.data(); });
+      setAllSchedules(mapped);
+    });
+    return () => unsub();
+  }, [db, branch]);
+
+  const activeSchedule = selectedDate ? allSchedules[selectedDate] : null;
+
+  useEffect(() => {
+    if (selectedDate) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [selectedDate]);
+
+  const totalAvailableCount = useMemo(() => {
+    if (!selectedDate) return 0;
+    return defaultTimes.reduce((acc, time) => {
+      const slot = allSchedules[selectedDate]?.slots?.find(s => s.time === time) || { time, capacity: 3, booked: 0, disabledIndices: [] };
+      const totalStaff = allSchedules[selectedDate]?.totalDbCount || 3;
+      const bookedCount = slot.booked || 0;
+      const disabledIndices = slot.disabledIndices || [];
+      let count = 0;
+      for (let i = 0; i < totalStaff; i++) {
+        if (!disabledIndices.includes(i) && i >= bookedCount) count++;
+      }
+      return acc + count;
+    }, 0);
+  }, [selectedDate, allSchedules]);
+
+  const handleSaveDay = async (date, updatedSchedule) => {
+    try {
+      const scheduleId = `${branch}_${date}`;
+      const docRef = doc(db, `artifacts/${appId}/public/data/fair_schedules`, scheduleId);
+      await setDoc(docRef, { ...updatedSchedule, branchName: branch, date, updatedAt: new Date() });
+    } catch (e) { console.error(e); }
+  };
+
+  const toggleIndividualSlot = async (date, time, slotIndex) => {
+    const existing = allSchedules[date] || { date, branchName: branch, totalDbCount: 3, slots: defaultTimes.map(t => ({ time: t, capacity: 3, booked: 0, disabledIndices: [] })) };
+    const newSlots = existing.slots.map(s => {
+      if (s.time === time) {
+        const disabled = s.disabledIndices || [];
+        const newDisabled = disabled.includes(slotIndex) ? disabled.filter(i => i !== slotIndex) : [...disabled, slotIndex];
+        return { ...s, disabledIndices: newDisabled };
+      }
+      return s;
+    });
+    const updated = { ...existing, slots: newSlots };
+    setAllSchedules(prev => ({ ...prev, [date]: updated }));
+    handleSaveDay(date, updated);
+  };
+
+  const updateAllCapacities = async (date, count) => {
+    const existing = allSchedules[date] || { date, branchName: branch, totalDbCount: count, slots: defaultTimes.map(t => ({ time: t, capacity: 3, booked: 0, disabledIndices: [] })) };
+    const newDisabledIndices = [];
+    if (count < 3) newDisabledIndices.push(2);
+    if (count < 2) newDisabledIndices.push(1);
+    const newSlots = defaultTimes.map(time => {
+      const s = existing.slots?.find(sl => sl.time === time) || { time, capacity: 3, booked: 0, disabledIndices: [] };
+      return { ...s, disabledIndices: [...newDisabledIndices] };
+    });
+    const updated = { ...existing, totalDbCount: count, slots: newSlots };
+    setAllSchedules(prev => ({ ...prev, [date]: updated }));
+    handleSaveDay(date, updated);
+  };
+
+  const closeWholeDay = async (date) => {
+    const existing = allSchedules[date] || { date, branchName: branch, totalDbCount: 3, slots: defaultTimes.map(t => ({ time: t, capacity: 3, booked: 0, disabledIndices: [] })) };
+    const newSlots = defaultTimes.map(time => {
+      const s = existing.slots?.find(sl => sl.time === time) || { time, capacity: 3, booked: 0, disabledIndices: [] };
+      return { ...s, disabledIndices: [0, 1, 2] };
+    });
+    const updated = { ...existing, slots: newSlots };
+    setAllSchedules(prev => ({ ...prev, [date]: updated }));
+    handleSaveDay(date, updated);
+  };
+
+  const openWholeDay = async (date) => {
+    const existing = allSchedules[date] || { date, branchName: branch, totalDbCount: 3, slots: defaultTimes.map(t => ({ time: t, capacity: 3, booked: 0, disabledIndices: [] })) };
+    const count = existing.totalDbCount || 3;
+    const defaultDisabled = [];
+    if (count < 3) defaultDisabled.push(2);
+    if (count < 2) defaultDisabled.push(1);
+    const newSlots = defaultTimes.map(time => {
+      const s = existing.slots?.find(sl => sl.time === time) || { time, capacity: 3, booked: 0, disabledIndices: [] };
+      return { ...s, disabledIndices: [...defaultDisabled] };
+    });
+    const updated = { ...existing, slots: newSlots };
+    setAllSchedules(prev => ({ ...prev, [date]: updated }));
+    handleSaveDay(date, updated);
+  };
+
+  const toggleSlot = async (date, time) => {
+    const existing = allSchedules[date] || { date, branchName: branch, totalDbCount: 3, slots: defaultTimes.map(t => ({ time: t, capacity: 3, booked: 0, disabledIndices: [] })) };
+    const targetSlot = existing.slots.find(s => s.time === time) || { time, capacity: 3, booked: 0, disabledIndices: [0, 1, 2] };
+    const isOpen = !((targetSlot.disabledIndices || []).length === 3);
+    const newSlots = defaultTimes.map(timeStr => {
+      const s = existing.slots.find(sl => sl.time === timeStr) || { time: timeStr, capacity: 3, booked: 0, disabledIndices: [0, 1, 2] };
+      if (timeStr === time) {
+        if (isOpen) return { ...s, disabledIndices: [0, 1, 2] };
+        else {
+          const count = existing.totalDbCount || 3;
+          const restored = [];
+          if (count < 3) restored.push(2);
+          if (count < 2) restored.push(1);
+          return { ...s, disabledIndices: restored };
+        }
+      }
+      return s;
+    });
+    const updated = { ...existing, slots: newSlots };
+    setAllSchedules(prev => ({ ...prev, [date]: updated }));
+    handleSaveDay(date, updated);
+  };
+
+  const navigateDate = (delta) => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + delta);
+    const ds = d.toISOString().split('T')[0];
+    if (d.getMonth() !== currentMonth.getMonth()) setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+    setSelectedDate(ds);
+  };
+
+  const renderCalendar = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days = [];
+    for (let i = 0; i < (firstDay || 7) - 1; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+    return (
+      <div className="grid grid-cols-7 gap-1 sm:gap-2">
+        {['월', '화', '수', '목', '금', '토', '일'].map(d => (
+          <div key={d} className="text-center text-[10px] font-black text-slate-300 p-2 uppercase">{d}</div>
+        ))}
+        {days.map((day, idx) => {
+          if (!day) return <div key={`empty-${idx}`} className="h-28 sm:h-32 bg-slate-50/30 rounded-2xl" />;
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const schedule = allSchedules[dateStr];
+          const hasSlots = schedule?.slots?.length > 0;
+          const isToday = dateStr === new Date().toISOString().split('T')[0];
+          return (
+            <button key={day} onClick={() => setSelectedDate(dateStr)} className={`h-28 sm:h-32 rounded-2xl border transition-all flex flex-col p-3 text-left group overflow-hidden ${isToday ? 'border-amber-400 ring-1 ring-amber-400 bg-white' : hasSlots ? 'bg-white border-emerald-100 shadow-sm' : 'bg-slate-50/50 border-slate-100 opacity-60'} hover:border-emerald-400 hover:bg-white hover:shadow-lg active:scale-95`}>
+              <span className={`text-xs font-black ${isToday ? 'text-amber-600' : 'text-slate-700'}`}>{day}</span>
+              {hasSlots && (
+                <div className="mt-1.5 flex-1 overflow-hidden flex flex-col justify-between">
+                  <div className="space-y-[1px]">
+                    {schedule.slots.map((s, i) => (
+                      <div key={i} className="flex items-center justify-between gap-0.5 leading-none">
+                        <span className="text-[6px] font-black text-slate-300 scale-90 origin-left">{s.time.split(':')[0]}</span>
+                        <div className="flex gap-[0.5px]">
+                          {(() => {
+                            const totalStaff = schedule.totalDbCount || 3;
+                            const slots = [];
+                            for (let dotIdx = 0; dotIdx < 3; dotIdx++) {
+                              const isOutOfStaff = dotIdx >= totalStaff;
+                              const isDisabled = (s.disabledIndices || []).includes(dotIdx);
+                              const isBooked = dotIdx < (s.booked || 0);
+                              if (!isOutOfStaff && !isDisabled) slots.push({ type: 'open', booked: isBooked });
+                            }
+                            return (
+                              <div className="flex gap-[0.5px]">
+                                {slots.map((sl, idx) => (
+                                  <div key={idx} className={`w-[4px] h-[4px] rounded-full ${sl.booked ? 'bg-slate-300' : 'bg-emerald-400'}`} />
+                                ))}
+                                {Array.from({ length: totalStaff - slots.length }).map((_, idx) => (
+                                  <div key={idx} className="w-[3px] h-[1px] bg-slate-200 rounded-full my-auto" />
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col p-4 sm:p-8">
+      {selectedDate && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-hidden">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50 shrink-0">
+              <div className="flex items-center gap-4">
+                <button onClick={() => navigateDate(-1)} className="p-2 hover:bg-white rounded-xl transition-all"><ChevronLeft className="w-5 h-5 text-slate-400" /></button>
+                <div>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{branch}</div>
+                  <h3 className="text-2xl font-black text-slate-800">{selectedDate.replace(/-/g, '. ')}.</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[11px] font-black text-emerald-600 uppercase tracking-tight">당일 가능 상담 개수 {totalAvailableCount}개</span>
+                  </div>
+                </div>
+                <button onClick={() => navigateDate(1)} className="p-2 hover:bg-white rounded-xl transition-all"><ChevronRight className="w-5 h-5 text-slate-400" /></button>
+              </div>
+              <button onClick={() => setSelectedDate(null)} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm"><X className="w-6 h-6 text-slate-400" /></button>
+            </div>
+
+            <div className="p-8 overflow-y-auto flex-1">
+              <div className="bg-slate-50 p-6 rounded-[2.5rem] space-y-6 mb-8 shrink-0">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-black text-slate-400 uppercase mb-1">동시간대 상담가능 개수 설정</div>
+                    <div className="text-2xl font-black text-slate-800">{activeSchedule?.totalDbCount || 3}개 설정</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => updateAllCapacities(selectedDate, Math.max(1, (activeSchedule?.totalDbCount || 3) - 1))} className="w-12 h-12 bg-white rounded-2xl border border-slate-200 flex items-center justify-center shadow-sm active:scale-90 transition-all text-slate-400 hover:text-emerald-600 hover:border-emerald-200"><ChevronDown className="w-6 h-6" /></button>
+                    <button onClick={() => updateAllCapacities(selectedDate, Math.min(3, (activeSchedule?.totalDbCount || 3) + 1))} className="w-12 h-12 bg-white rounded-2xl border border-slate-200 flex items-center justify-center shadow-sm active:scale-90 transition-all text-slate-400 hover:text-emerald-600 hover:border-emerald-200"><ChevronUp className="w-6 h-6" /></button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => closeWholeDay(selectedDate)} className="py-4 bg-white border border-rose-100 text-rose-500 rounded-2xl font-black text-xs hover:bg-rose-50 transition-all flex items-center justify-center gap-2 shadow-sm"><XCircle className="w-4 h-4" /> 전체 마감</button>
+                  <button onClick={() => openWholeDay(selectedDate)} className="py-4 bg-white border border-emerald-100 text-emerald-600 rounded-2xl font-black text-xs hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-sm"><CheckCircle2 className="w-4 h-4" /> 전체 열기</button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {defaultTimes.map(time => {
+                  const slot = activeSchedule?.slots?.find(s => s.time === time) || { time, capacity: 3, booked: 0, disabledIndices: [] };
+                  const isOpen = !((slot.disabledIndices || []).length === 3);
+                  const bookedCount = slot.booked || 0;
+                  const avail = (activeSchedule?.totalDbCount || 3) - (slot.disabledIndices?.length || 0);
+
+                  return (
+                    <div key={time} className={`p-5 rounded-[2rem] border-2 transition-all flex flex-col gap-4 ${isOpen ? 'border-emerald-500 bg-emerald-50/50 shadow-sm' : 'border-slate-200 bg-slate-100/80 opacity-60'}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-3 flex-1">
+                          <div className="flex items-center gap-3">
+                            <div className={`text-xl font-black ${isOpen ? 'text-emerald-900' : 'text-slate-400'}`}>{time}</div>
+                            <div className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${isOpen ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-400'}`}>
+                              {bookedCount > 0 ? `기존 ${bookedCount}건 예약됨` : `${avail}개 가능`}
+                            </div>
+                            {bookedCount > 0 && <div className="text-[9px] font-bold text-amber-500 flex items-center gap-1 animate-pulse"><div className="w-1 h-1 rounded-full bg-amber-500" /> 보호됨</div>}
+                          </div>
+                          <div className="flex flex-wrap gap-2.5">
+                            {(() => {
+                              const staff = activeSchedule?.totalDbCount || 3;
+                              const active = [];
+                              const closed = [];
+                              const hidden = [];
+                              for (let i = 0; i < 3; i++) {
+                                const isB = i < bookedCount;
+                                const isD = (slot.disabledIndices || []).includes(i);
+                                const isH = i >= staff;
+                                if (isH) hidden.push(i);
+                                else if (isD) closed.push(i);
+                                else active.push({ index: i, booked: isB });
+                              }
+                              return (
+                                <>
+                                  {active.map((as, idx) => (
+                                    <button key={`act-${idx}`} disabled={as.booked} onClick={() => toggleIndividualSlot(selectedDate, time, as.index)} className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black transition-all active:scale-90 shadow-md ${as.booked ? 'bg-slate-300 text-white cursor-not-allowed' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}>{idx + 1}</button>
+                                  ))}
+                                  {closed.map((cs, idx) => (
+                                    <button key={`cls-${idx}`} onClick={() => toggleIndividualSlot(selectedDate, time, cs)} className="px-5 h-12 bg-white border-2 border-slate-200 text-slate-400 rounded-2xl text-xs font-black hover:border-emerald-200 transition-all flex items-center justify-center">마감</button>
+                                  ))}
+                                  {hidden.map((os, idx) => (
+                                    <div key={`hid-${idx}`} className="w-12 h-12 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex items-center justify-center opacity-20"><div className="w-1.5 h-1.5 bg-slate-300 rounded-full" /></div>
+                                  ))}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          <button onClick={() => toggleSlot(selectedDate, time)} disabled={bookedCount > 0} className={`px-4 py-3 rounded-2xl font-black text-xs transition-all active:scale-95 whitespace-nowrap ${bookedCount > 0 ? 'bg-slate-50 text-slate-200 cursor-not-allowed border border-slate-100' : isOpen ? 'bg-white text-rose-500 border-2 border-rose-100 hover:bg-rose-50 shadow-sm' : 'bg-slate-800 text-white shadow-lg hover:bg-black'}`}>{bookedCount > 0 ? '수정 불가' : isOpen ? '시간 마감' : '시간 열기'}</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            <div className="p-8 bg-slate-50 border-t border-slate-100 shrink-0">
+              <button 
+                onClick={() => {
+                  if (selectedDate) {
+                    const existing = allSchedules[selectedDate] || { date: selectedDate, branchName: branch, totalDbCount: 3, slots: defaultTimes.map(t => ({ time: t, capacity: 3, booked: 0, disabledIndices: [] })) };
+                    handleSaveDay(selectedDate, existing);
+                  }
+                  setSelectedDate(null);
+                }} 
+                className="w-full py-5 bg-slate-800 text-white rounded-[2rem] font-black shadow-xl hover:bg-black transition-all"
+              >
+                설정 저장 및 닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto w-full">
+        <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-4 bg-slate-800 rounded-2xl shadow-xl"><Settings className="text-white w-8 h-8" /></div>
+            <div>
+              <h2 className="text-3xl font-black text-slate-800 tracking-tight">{branch} 일정 설정</h2>
+              <p className="text-slate-400 font-bold text-sm">상담 가능 시간을 활성화하고 동그라미(개수)를 설정하세요.</p>
+            </div>
+          </div>
+          <button onClick={onBack} className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:bg-slate-50 transition-all"><Undo2 className="w-6 h-6 text-slate-400" /></button>
+        </header>
+
+        <div className="bg-white p-8 rounded-[3rem] shadow-xl border border-slate-100">
+          <div className="flex items-center justify-between mb-10">
+            <h3 className="text-2xl font-black text-slate-800 flex items-center gap-4">{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</h3>
+            <div className="flex gap-2">
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="p-3 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-all"><ChevronLeft className="w-6 h-6 text-slate-600" /></button>
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="p-3 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-all"><ChevronRight className="w-6 h-6 text-slate-600" /></button>
+            </div>
+          </div>
+          {renderCalendar()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FairScheduleViewer({ fairUser, branches, db, onBack }) {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedBranch, setSelectedBranch] = useState(branches[0]);
+  const [branchSchedules, setBranchSchedules] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [now, setNow] = useState(new Date());
+  const [isMyBookingsOpen, setIsMyBookingsOpen] = useState(false);
+  const [allGlobalSchedules, setAllGlobalSchedules] = useState([]);
+
+  useEffect(() => {
+    if (!db) return;
+    const q = collection(db, `artifacts/${appId}/public/data/fair_schedules`);
+    const unsub = onSnapshot(q, (snapshot) => {
+      setAllGlobalSchedules(snapshot.docs.map(doc => doc.data()));
+    });
+    return () => unsub();
+  }, [db]);
+
+  const myBookings = useMemo(() => {
+    const list = [];
+    allGlobalSchedules.forEach(sched => {
+      (sched.bookings || []).forEach(b => {
+        if (b.userId === fairUser.phone) list.push({ ...b, date: sched.date, branchName: sched.branchName });
+      });
+    });
+    return list.sort((a, b) => a.date.localeCompare(b.date));
+  }, [allGlobalSchedules, fairUser.phone]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (selectedDate || isMyBookingsOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [selectedDate, isMyBookingsOpen]);
+
+  useEffect(() => {
+    if (!db || !selectedBranch) return;
+    setLoading(true);
+    const q = query(collection(db, `artifacts/${appId}/public/data/fair_schedules`), where("branchName", "==", selectedBranch));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const schedules = {};
+      snapshot.docs.forEach(doc => { schedules[doc.data().date] = doc.data(); });
+      setBranchSchedules(schedules);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [db, selectedBranch]);
+
+  const activeSchedule = selectedDate ? branchSchedules[selectedDate] : null;
+
+  const handleHold = async (date, slotIndex) => {
+    const schedule = branchSchedules[date];
+    if (!schedule) return;
+    const slot = schedule.slots[slotIndex];
+    const activeHolds = (schedule.holds || []).filter(h => h.expiresAt.toDate() > new Date());
+    const totalOccupied = (slot.booked || 0) + activeHolds.filter(h => h.slotIndex === slotIndex).length;
+    if (totalOccupied >= slot.capacity) return alert('가득 찼습니다.');
+
+    try {
+      const docRef = doc(db, `artifacts/${appId}/public/data/fair_schedules`, `${selectedBranch}_${date}`);
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+      await updateDoc(docRef, { holds: arrayUnion({ slotIndex, holderId: fairUser.phone, holderName: fairUser.name, expiresAt }) });
+    } catch (e) { console.error(e); }
+  };
+
+  const handleCancelHold = async (date, slotIndex) => {
+    const schedule = branchSchedules[date];
+    if (!schedule) return;
+    try {
+      const docRef = doc(db, `artifacts/${appId}/public/data/fair_schedules`, `${selectedBranch}_${date}`);
+      const remaining = (schedule.holds || []).filter(h => !(h.slotIndex === slotIndex && h.holderId === fairUser.phone));
+      await updateDoc(docRef, { holds: remaining });
+    } catch (e) { console.error(e); }
+  };
+
+  const handleBook = async (date, slotIndex) => {
+    const schedule = branchSchedules[date];
+    if (!schedule) return;
+    const slot = schedule.slots[slotIndex];
+    if (!window.confirm(`${date} ${slot.time} 예약하시겠습니까?`)) return;
+    try {
+      const docRef = doc(db, `artifacts/${appId}/public/data/fair_schedules`, `${selectedBranch}_${date}`);
+      const newSlots = [...schedule.slots];
+      newSlots[slotIndex] = { ...slot, booked: (slot.booked || 0) + 1 };
+      const remainingHolds = (schedule.holds || []).filter(h => !(h.slotIndex === slotIndex && h.holderId === fairUser.phone));
+      await updateDoc(docRef, { slots: newSlots, holds: remainingHolds, bookings: arrayUnion({ slotIndex, userId: fairUser.phone, userName: fairUser.name, timestamp: new Date() }) });
+      alert('확정되었습니다.');
+      setSelectedDate(null);
+    } catch (e) { console.error(e); }
+  };
+
+  const handleCancelBookingGlobal = async (branchName, date, slotIndex) => {
+    const schedule = allGlobalSchedules.find(s => s.date === date && s.branchName === branchName);
+    if (!schedule || !window.confirm('취소하시겠습니까?')) return;
+    try {
+      const docRef = doc(db, `artifacts/${appId}/public/data/fair_schedules`, `${branchName}_${date}`);
+      const newSlots = [...schedule.slots];
+      newSlots[slotIndex] = { ...schedule.slots[slotIndex], booked: Math.max(0, (schedule.slots[slotIndex].booked || 0) - 1) };
+      const remainingBookings = (schedule.bookings || []).filter(b => !(b.slotIndex === slotIndex && b.userId === fairUser.phone));
+      await updateDoc(docRef, { slots: newSlots, bookings: remainingBookings });
+      alert('취소되었습니다.');
+    } catch (e) { console.error(e); }
+  };
+
+  const renderSlotDots = (dateStr, slot, slotIndex) => {
+    const schedule = branchSchedules[dateStr];
+    if (!schedule) return null;
+    const activeHolds = (schedule.holds || []).filter(h => h.expiresAt.toDate() > now);
+    const disabled = slot.disabledIndices || [];
+    const dots = [];
+    for (let i = 0; i < 3; i++) {
+      if (i < (slot.booked || 0)) dots.push('booked');
+      else if (disabled.includes(i)) dots.push('disabled');
+      else dots.push(activeHolds.some(h => h.slotIndex === slotIndex) ? 'pending' : 'available');
+    }
+    return (
+      <div className="flex gap-[0.5px]">
+        {dots.map((type, i) => type !== 'disabled' && (
+          <div key={i} className={`w-[3px] h-[3px] rounded-full ${type === 'booked' ? 'bg-slate-300' : type === 'pending' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
+        ))}
+      </div>
+    );
+  };
+
+  const renderCalendarGrid = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days = [];
+    for (let i = 0; i < (firstDay || 7) - 1; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+    return (
+      <div className="grid grid-cols-7 gap-1 sm:gap-2">
+        {['월', '화', '수', '목', '금', '토', '일'].map(d => (
+          <div key={d} className="text-center text-[10px] font-black text-slate-400 p-2 uppercase">{d}</div>
+        ))}
+        {days.map((day, idx) => {
+          if (!day) return <div key={`empty-${idx}`} className="bg-slate-50/20 rounded-lg h-24 sm:h-32" />;
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const schedule = branchSchedules[dateStr];
+          const isToday = dateStr === new Date().toISOString().split('T')[0];
+          return (
+            <button key={day} onClick={() => setSelectedDate(dateStr)} className={`bg-white rounded-xl border ${isToday ? 'border-amber-400 ring-1 ring-amber-400' : 'border-slate-100'} h-24 sm:h-32 flex flex-col p-2 text-left active:scale-95 transition-all group hover:border-emerald-400`}>
+              <span className={`text-xs font-black ${isToday ? 'text-amber-600' : 'text-slate-700'}`}>{day}</span>
+              <div className="mt-1 flex-1 overflow-hidden space-y-[1px]">
+                {(schedule?.slots || []).map((slot, sIdx) => (
+                  <div key={sIdx} className="flex items-center justify-between gap-0.5 leading-none">
+                    <span className="text-[6px] font-black text-slate-300 scale-90 origin-left">{slot.time.split(':')[0]}</span>
+                    {renderSlotDots(dateStr, slot, sIdx)}
+                  </div>
+                ))}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col p-2 sm:p-8">
+      {selectedDate && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
+          <div className="bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-10 duration-300">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-4">
+                <button onClick={() => {
+                  const d = new Date(selectedDate); d.setDate(d.getDate() - 1);
+                  const ds = d.toISOString().split('T')[0];
+                  if (d.getMonth() !== currentMonth.getMonth()) setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                  setSelectedDate(ds);
+                }} className="p-2 hover:bg-white rounded-xl transition-all"><ChevronLeft className="w-5 h-5 text-slate-400" /></button>
+                <div>
+                  <div className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">{selectedBranch} 지점</div>
+                  <h3 className="text-2xl font-black text-slate-800">{selectedDate.replace(/-/g, '. ')}.</h3>
+                </div>
+                <button onClick={() => {
+                  const d = new Date(selectedDate); d.setDate(d.getDate() + 1);
+                  const ds = d.toISOString().split('T')[0];
+                  if (d.getMonth() !== currentMonth.getMonth()) setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                  setSelectedDate(ds);
+                }} className="p-2 hover:bg-white rounded-xl transition-all"><ChevronRight className="w-5 h-5 text-slate-400" /></button>
+              </div>
+              <button onClick={() => setSelectedDate(null)} className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100"><X className="w-6 h-6 text-slate-400" /></button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto">
+              {!activeSchedule ? (
+                <div className="py-20 text-center">
+                  <AlertTriangle className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                  <p className="text-slate-400 font-black">해당 날짜에 등록된 스케줄이 없습니다.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {activeSchedule.slots.map((slot, sIdx) => {
+                    const activeHolds = (activeSchedule.holds || []).filter(h => h.expiresAt.toDate() > now && h.slotIndex === sIdx);
+                    const myHold = activeHolds.find(h => h.holderId === fairUser.phone);
+                    const myBooking = (activeSchedule.bookings || []).find(b => b.slotIndex === sIdx && b.userId === fairUser.phone);
+                    const isFull = (slot.booked || 0) + activeHolds.length >= slot.capacity;
+
+                    return (
+                      <div key={sIdx} className={`p-5 rounded-3xl border-2 transition-all flex flex-col gap-4 ${myBooking ? 'border-emerald-600 bg-emerald-50/30' : myHold ? 'border-amber-400 bg-amber-50 shadow-lg' : isFull ? 'border-slate-50 bg-slate-50 opacity-60' : 'border-slate-100 bg-white hover:border-emerald-400'}`}>
+                        <div className="flex items-center justify-between w-full">
+                          <div>
+                            <div className="text-lg font-black text-slate-800">{slot.time}</div>
+                            <div className="flex gap-1 mt-1">
+                              {Array.from({ length: slot.capacity }).map((_, i) => {
+                                const isB = i < (slot.booked || 0);
+                                const isH = !isB && (i < (slot.booked || 0) + activeHolds.length);
+                                return <div key={i} className={`w-3 h-3 rounded-full ${isB ? 'bg-slate-300' : isH ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />;
+                              })}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            {myBooking && <button onClick={() => handleCancelBookingGlobal(selectedBranch, selectedDate, sIdx)} className="px-4 py-3 bg-red-50 text-red-600 border border-red-100 rounded-2xl font-black text-xs hover:bg-red-100 transition-all">예약 취소</button>}
+                            {myHold && <button onClick={() => handleCancelHold(selectedDate, sIdx)} className="px-4 py-3 bg-white border border-amber-200 text-amber-600 rounded-2xl font-black text-xs hover:bg-amber-100 transition-all">점유 취소</button>}
+                            {!isFull && !myHold && !myBooking && <button onClick={() => handleHold(selectedDate, sIdx)} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm hover:bg-slate-200 transition-all">점유</button>}
+                            {(myHold || (!isFull && !activeHolds.length && !myBooking)) && <button onClick={() => handleBook(selectedDate, sIdx)} className="px-6 py-3 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-lg hover:bg-emerald-700 transition-all">예약 확정</button>}
+                          </div>
+                        </div>
+                        {activeHolds.length > 0 && (
+                          <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100">
+                            {activeHolds.map((hold, hIdx) => {
+                              const remain = Math.max(0, Math.floor((hold.expiresAt.toDate() - now) / 1000));
+                              const mm = String(Math.floor(remain / 60)).padStart(2, '0');
+                              const ss = String(remain % 60).padStart(2, '0');
+                              const isMe = hold.holderId === fairUser.phone;
+                              return (
+                                <div key={hIdx} className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black ${isMe ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                  <User className="w-3 h-3" /><span>{hold.holderName}{isMe ? '(나)' : ''}</span><span className="opacity-60">|</span><span className="font-mono">{mm}:{ss}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="p-8 bg-slate-50 border-t border-slate-100">
+              <div className="flex items-center gap-6 text-[10px] font-black text-slate-400 justify-center">
+                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> 예약가능</div>
+                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-400" /> 점유중</div>
+                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-slate-300" /> 예약완료</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto w-full">
+        <header className="flex flex-col md:flex-row md:items-center justify-between mb-4 sm:mb-8 gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-emerald-600 rounded-2xl shadow-lg"><Calendar className="text-white w-6 h-6" /></div>
+            <div>
+              <h2 className="text-xl font-black text-slate-800 tracking-tight">Robe 예약 현황</h2>
+              <div className="flex items-center gap-2">
+                <p className="text-slate-400 font-bold text-[10px]">{fairUser?.name} 담당자님</p>
+                <button onClick={() => { if (window.confirm('로그아웃 하시겠습니까?')) { localStorage.removeItem('fair_user'); onBack(); } }} className="text-[9px] font-black text-rose-500 hover:text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded transition-all">로그아웃</button>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setIsMyBookingsOpen(true)} className="relative px-4 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl font-black text-xs border border-emerald-100 shadow-sm hover:bg-emerald-100 transition-all flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />나의 예약
+              {myBookings.length > 0 && <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white">{myBookings.length}</span>}
+            </button>
+            <select value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)} className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-black text-sm text-slate-700 shadow-sm outline-none">
+              {branches.map(b => <option key={b} value={b}>{b} 지점</option>)}
+            </select>
+            <button onClick={onBack} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-100 hover:bg-slate-50 transition-all"><Undo2 className="w-5 h-5 text-slate-400" /></button>
+          </div>
+        </header>
+
+        <div className="bg-white p-4 sm:p-8 rounded-[2rem] shadow-xl border border-slate-100">
+          <div className="flex items-center justify-between mb-6 sm:mb-10">
+            <h3 className="text-lg font-black text-slate-800 flex items-center gap-3">
+              {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월
+              <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] rounded-full border border-emerald-100">{selectedBranch}</span>
+            </h3>
+            <div className="flex gap-1">
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="p-2 hover:bg-slate-50 rounded-xl border border-slate-100 transition-all"><ChevronLeft className="w-5 h-5 text-slate-600" /></button>
+              <button onClick={() => setCurrentMonth(new Date())} className="px-4 py-2 font-black text-slate-600 hover:bg-slate-50 rounded-xl border border-slate-100 text-xs transition-all">오늘</button>
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="p-2 hover:bg-slate-50 rounded-xl border border-slate-100 transition-all"><ChevronRight className="w-5 h-5 text-slate-600" /></button>
+            </div>
+          </div>
+          {loading ? <div className="py-40 flex flex-col items-center justify-center"><div className="w-12 h-12 border-4 border-slate-100 border-t-emerald-600 rounded-full animate-spin"></div></div> : renderCalendarGrid()}
+        </div>
+      </div>
+
+      {isMyBookingsOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-hidden">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50 shrink-0">
+              <div><div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{fairUser.name} 담당자님</div><h3 className="text-2xl font-black text-slate-800">나의 예약 현황</h3></div>
+              <button onClick={() => setIsMyBookingsOpen(false)} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm"><X className="w-6 h-6 text-slate-400" /></button>
+            </div>
+            <div className="p-8 overflow-y-auto flex-1 space-y-4">
+              {myBookings.length === 0 ? <div className="py-20 text-center"><div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6"><BookOpen className="w-10 h-10 text-slate-200" /></div><p className="text-slate-400 font-black">아직 예약된 내역이 없습니다.</p></div> : 
+                myBookings.map((b, idx) => (
+                  <div key={idx} className="p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm flex items-center justify-between group hover:border-emerald-400 transition-all">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 mb-1"><span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{b.branchName} 지점</span></div>
+                      <div className="text-xl font-black text-slate-800">{b.date.replace(/-/g, '. ')}.</div>
+                      <div className="text-sm font-bold text-slate-400 flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{allGlobalSchedules.find(s => s.date === b.date && s.branchName === b.branchName)?.slots[b.slotIndex]?.time || '시간 정보 없음'}</div>
+                    </div>
+                    <button onClick={() => handleCancelBookingGlobal(b.branchName, b.date, b.slotIndex)} className="p-4 bg-red-50 text-red-500 rounded-2xl hover:bg-red-100 transition-all active:scale-90"><Trash2 className="w-5 h-5" /></button>
+                  </div>
+                ))
+              }
+            </div>
+            <div className="p-8 bg-slate-50 border-t border-slate-100 shrink-0"><button onClick={() => setIsMyBookingsOpen(false)} className="w-full py-5 bg-slate-800 text-white rounded-2xl font-black shadow-xl hover:bg-black transition-all">닫기</button></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+function EntrySelectionView({ onSelect }) {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+      <div className="p-8 sm:p-10 bg-white rounded-3xl shadow-2xl text-center w-full max-w-md border border-gray-100">
+        <div className="flex justify-center mb-6">
+          <div className="p-4 bg-blue-50 rounded-full">
+            <LayoutDashboard className="w-12 h-12 text-blue-600" />
+          </div>
+        </div>
+        <h1 className="text-3xl font-black text-gray-800 mb-2 tracking-tight">ROBE 관리 시스템</h1>
+        <p className="text-gray-500 mb-10 text-sm font-medium">진입하실 메뉴를 선택해 주세요.</p>
+        
+        <div className="space-y-4">
+          <button 
+            onClick={() => onSelect('login')}
+            className="w-full p-6 bg-white border-2 border-gray-100 rounded-2xl flex items-center gap-4 hover:border-blue-500 hover:bg-blue-50/30 transition-all group shadow-sm"
+          >
+            <div className="p-3 bg-red-50 rounded-xl group-hover:bg-red-100 transition-colors">
+              <ClipboardList className="w-6 h-6 text-red-600" />
+            </div>
+            <div className="text-left">
+              <div className="text-lg font-black text-gray-800">미계약 입력 폼</div>
+              <div className="text-xs text-gray-400 font-bold">기존 계약관리 CRM 접속 (테일러 전용)</div>
+            </div>
+            <ArrowRight className="ml-auto w-5 h-5 text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+          </button>
+
+          <button 
+            onClick={() => onSelect('fair')}
+            className="w-full p-6 bg-white border-2 border-gray-100 rounded-2xl flex items-center gap-4 hover:border-blue-500 hover:bg-blue-50/30 transition-all group shadow-sm"
+          >
+            <div className="p-3 bg-amber-50 rounded-xl group-hover:bg-amber-100 transition-colors">
+              <Calendar className="w-6 h-6 text-amber-600" />
+            </div>
+            <div className="text-left">
+              <div className="text-lg font-black text-gray-800">박람회 스케줄</div>
+              <div className="text-xs text-gray-400 font-bold">박람회 현장 스케줄 및 지점 가용 현황</div>
+            </div>
+            <ArrowRight className="ml-auto w-5 h-5 text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FairScheduleEntry({ onSelect, onBack, branches }) {
+  const [mode, setMode] = useState('select'); // 'select', 'fair_manager', 'branch_manager'
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [isInApp, setIsInApp] = useState(false);
+
+  // Auto-Login if session exists
+  useEffect(() => {
+    const saved = localStorage.getItem('fair_user');
+    if (saved) {
+      onSelect('fair_manager', JSON.parse(saved));
+    }
+  }, []);
+
+  // Detect In-App Browser (Kakao, etc.)
+  useEffect(() => {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes('kakaotalk') || ua.includes('line') || ua.includes('instagram') || ua.includes('fbav')) {
+      setIsInApp(true);
+    }
+  }, []);
+
+  const handleFairManagerLogin = (e) => {
+    e.preventDefault();
+    if (!name || !phone) return alert('이름과 전화번호를 입력해주세요.');
+    
+    const userData = { name, phone };
+    localStorage.setItem('fair_user', JSON.stringify(userData));
+    onSelect('fair_manager', userData);
+  };
+
+  // Auto-redirect or Show Guide for Kakao
+  const handleEscapeInApp = () => {
+    const url = window.location.href;
+    if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+      // iOS: Guide to click (...)
+      alert('우측 상단의 [...] 버튼을 누른 후 "기본 브라우저로 열기" 또는 "Safari로 열기"를 선택해 주세요.');
+    } else {
+      // Android: Try to force Chrome
+      window.location.href = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
+    }
+  };
+
+  const handleLogout = () => {
+    if (window.confirm('로그아웃 하시겠습니까? 저장된 로그인 정보가 삭제됩니다.')) {
+      localStorage.removeItem('fair_user');
+      window.location.reload(); // Quickest way to reset the whole state
+    }
+  };
+
+  if (isInApp) {
+    return (
+      <div className="fixed inset-0 bg-slate-900 z-[100] flex items-center justify-center p-6 text-center">
+        <div className="bg-white rounded-[3rem] p-10 max-w-sm w-full space-y-6 shadow-2xl animate-in zoom-in duration-300">
+          <div className="flex justify-center">
+            <div className="p-5 bg-amber-50 rounded-[2rem] animate-bounce">
+              <Smartphone className="w-12 h-12 text-amber-600" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">외부 브라우저 권장</h2>
+            <p className="text-sm font-bold text-slate-400 leading-relaxed">
+              카카오톡 인앱 브라우저에서는<br/>
+              <span className="text-amber-600">로그인 정보가 유실될 위험</span>이 있습니다.
+            </p>
+          </div>
+          
+          <div className="bg-slate-50 p-6 rounded-3xl text-[11px] text-left font-bold text-slate-500 space-y-2">
+            <p>1. 우측 상단 <span className="text-slate-800">더보기(⋮ 또는 ···)</span> 클릭</p>
+            <p>2. <span className="text-slate-800">"다른 브라우저로 열기"</span> 선택</p>
+          </div>
+
+          <button 
+            onClick={handleEscapeInApp}
+            className="w-full py-5 bg-slate-800 text-white rounded-2xl font-black shadow-xl hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-3"
+          >
+            기본 브라우저로 이동 <ArrowRight className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === 'fair_manager') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-900 p-6">
+        <form onSubmit={handleFairManagerLogin} className="p-10 bg-white rounded-[3rem] shadow-2xl text-center w-full max-w-sm border border-slate-100 animate-in zoom-in duration-300">
+          <div className="flex justify-center mb-6">
+            <div className="p-4 bg-amber-50 rounded-[2rem]">
+              <UserRound className="w-10 h-10 text-amber-600" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-black text-slate-800 mb-2">박람회 담당자</h1>
+          <p className="text-slate-400 mb-8 text-sm font-bold">상담 예약 및 일정 관리를 시작합니다.</p>
+          
+          <div className="space-y-4 text-left">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-4">성함</label>
+              <input
+                type="text"
+                placeholder="이름을 입력하세요"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent focus:border-amber-500 focus:bg-white rounded-2xl outline-none transition-all font-bold text-slate-700"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-4">연락처</label>
+              <input
+                type="tel"
+                placeholder="01012345678"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent focus:border-amber-500 focus:bg-white rounded-2xl outline-none transition-all font-bold text-slate-700"
+              />
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-3 mt-6 text-left">
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+            <p className="text-[10px] leading-relaxed font-bold text-amber-700">
+              <span className="text-amber-900 block mb-0.5">⚠️ 중요 안내</span>
+              성함과 번호는 <span className="underline decoration-2">ID/PW</span> 역할을 합니다. 정보가 다르면 기존 예약 내역을 취소할 수 없습니다.
+            </p>
+          </div>
+
+          <button type="submit" className="w-full mt-6 px-4 py-5 bg-slate-800 text-white font-black rounded-2xl shadow-xl shadow-slate-100 hover:bg-black transition-all active:scale-95">시작하기</button>
+          <button type="button" onClick={() => setMode('select')} className="w-full mt-4 text-slate-400 font-bold text-xs">뒤로가기</button>
+        </form>
+      </div>
+    );
+  }
+
+  if (mode === 'branch_manager') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+        <div className="p-8 sm:p-10 bg-white rounded-3xl shadow-2xl text-center w-full max-w-md border border-gray-100">
+          <h1 className="text-2xl font-black text-gray-800 mb-6">지점 선택</h1>
+          <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto p-2">
+            {branches.map(branch => (
+              <button
+                key={branch}
+                onClick={() => onSelect('branch_manager', { branch })}
+                className="p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-gray-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all"
+              >
+                {branch}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => setMode('select')} className="w-full mt-6 text-gray-400 font-bold text-xs">뒤로가기</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+      <div className="p-8 sm:p-10 bg-white rounded-3xl shadow-2xl text-center w-full max-w-sm border border-gray-100">
+        <div className="flex justify-center mb-6">
+          <div className="p-3 bg-amber-50 rounded-2xl">
+            <Calendar className="w-10 h-10 text-amber-600" />
+          </div>
+        </div>
+        <h1 className="text-2xl font-black text-gray-800 mb-2">박람회 스케줄</h1>
+        <p className="text-gray-500 mb-10 text-sm font-medium">담당자 유형을 선택해 주세요.</p>
+        
+        <div className="space-y-3">
+          <button 
+            onClick={() => setMode('fair_manager')}
+            className="w-full p-5 bg-amber-600 text-white rounded-2xl font-black shadow-lg shadow-amber-100 hover:bg-amber-700 transition-all active:scale-95"
+          >
+            박람회 담당자
+          </button>
+          <button 
+            onClick={() => setMode('branch_manager')}
+            className="w-full p-5 bg-white border-2 border-gray-100 text-gray-800 rounded-2xl font-black hover:border-blue-500 hover:bg-blue-50/30 transition-all active:scale-95"
+          >
+            지점 담당자
+          </button>
+          <button 
+            onClick={onBack}
+            className="w-full py-2 text-gray-400 font-bold text-xs mt-4"
+          >
+            이전 화면으로
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function LoginComponent({ onLogin, onBack }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const STAFF_PASSWORD = "0077";
@@ -3660,7 +4554,14 @@ function LoginComponent({ onLogin }) {
           />
         </div>
         {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-        <button type="submit" className="w-full mt-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">접속하기</button>
+        <button type="submit" className="w-full mt-4 px-4 py-3 bg-red-600 text-white font-black rounded-xl shadow-lg shadow-red-100 hover:bg-red-700 transition-all active:scale-95">접속하기</button>
+        <button 
+          type="button"
+          onClick={onBack}
+          className="w-full mt-3 px-4 py-2 text-gray-400 font-bold text-xs hover:text-gray-600 transition-colors"
+        >
+          이전 화면으로
+        </button>
       </form>
     </div>
   );
@@ -3672,6 +4573,32 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isPasswordAuthenticated, setIsPasswordAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [entryMode, setEntryMode] = useState('select'); // 'select', 'login', 'fair'
+  const [db, setDb] = useState(null);
+  const [branches, setBranches] = useState(['도산', '광교', '구월', '노원', '대전', '부산', '성수', '수원', '압구정', '인천', '잠실']);
+  const [fairUser, setFairUser] = useState(() => {
+    const saved = localStorage.getItem('fair_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  useEffect(() => {
+    const app = initializeApp(firebaseConfig);
+    const firestoreDb = getFirestore(app);
+    setDb(firestoreDb);
+  }, []);
+
+  useEffect(() => {
+    if (!db) return;
+    const settingsCollectionPath = `artifacts/${appId}/public/data/dashboard_settings`;
+
+    const unsubBranches = onSnapshot(doc(db, settingsCollectionPath, 'branches'), (doc) => {
+      if (doc.exists() && doc.data().items) setBranches(doc.data().items);
+    });
+
+    return () => {
+      unsubBranches();
+    };
+  }, [db]);
 
   useEffect(() => {
     const app = initializeApp(firebaseConfig);
@@ -3702,7 +4629,55 @@ export default function App() {
     return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div></div>;
   }
 
-  return isPasswordAuthenticated && user ? <Dashboard user={user} userRole={userRole} /> : <LoginComponent onLogin={handlePasswordLogin} />;
+  if (isPasswordAuthenticated && user) {
+    return <Dashboard user={user} userRole={userRole} db={db} branches={branches} setBranches={setBranches} />;
+  }
+
+  if (entryMode === 'fair') {
+    return (
+      <FairScheduleEntry 
+        branches={branches} 
+        onBack={() => setEntryMode('select')} 
+        onSelect={(role, data) => {
+          if (role === 'fair_manager') {
+            setFairUser(data);
+            localStorage.setItem('fair_user', JSON.stringify(data));
+            setEntryMode('fair_viewer');
+          } else {
+            setEntryMode(`branch_editor_${data.branch}`);
+          }
+        }}
+      />
+    );
+  }
+
+  if (entryMode === 'fair_viewer') {
+    return (
+      <FairScheduleViewer 
+        fairUser={fairUser} 
+        branches={branches} 
+        db={db} 
+        onBack={() => setEntryMode('fair')} 
+      />
+    );
+  }
+
+  if (entryMode.startsWith('branch_editor_')) {
+    const branch = entryMode.replace('branch_editor_', '');
+    return (
+      <BranchScheduleEditor 
+        branch={branch} 
+        db={db} 
+        onBack={() => setEntryMode('fair')} 
+      />
+    );
+  }
+
+  if (entryMode === 'login') {
+    return <LoginComponent onLogin={handlePasswordLogin} onBack={() => setEntryMode('select')} />;
+  }
+
+  return <EntrySelectionView onSelect={setEntryMode} />;
 }
 
 const reasonColors = {
@@ -3759,18 +4734,19 @@ const ReportTemplate = ({ data, month }) => {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '40px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginBottom: '40px' }}>
         {[
           { label: '전체 DB 예약', value: data.totalDBStats.total, unit: '건', color: '#2563eb' },
-          { label: '계약 성공', value: data.totalDBStats.contracted, unit: '건', color: '#059669' },
-          { label: '성공률', value: data.totalDBStats.total > 0 ? ((data.totalDBStats.contracted / data.totalDBStats.total) * 100).toFixed(1) : 0, unit: '%', color: '#7c3aed' },
-          { label: '매출 합계', value: (data.salespersonStatsMatrix.reduce((acc, row) => acc + (row['매출합계'] || 0), 0) / 10000).toFixed(1) + '억', unit: '', color: '#dc2626' }
+          { label: '총 계약성공', value: data.totalDBStats.contracted, unit: '건', color: '#059669' },
+          { label: '루어 계약', value: data.lureStats.contracted, unit: '건', color: '#3b82f6' },
+          { label: '일반 계약', value: data.totalDBStats.contracted - data.lureStats.contracted, unit: '건', color: '#0ea5e9' },
+          { label: '매출 합계', value: data.salespersonStatsMatrix.reduce((acc, row) => acc + (row['매출합계'] || 0), 0).toLocaleString(), unit: '만', color: '#dc2626' }
         ].map((kpi, i) => (
-          <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '15px', backgroundColor: '#f9fafb' }}>
-            <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '5px', textTransform: 'uppercase' }}>{kpi.label}</p>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
-              <span style={{ fontSize: '24px', fontWeight: '900', color: kpi.color }}>{kpi.value}</span>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#9ca3af' }}>{kpi.unit}</span>
+          <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px 8px', backgroundColor: '#f9fafb', textAlign: 'center' }}>
+            <p style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', marginBottom: '5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{kpi.label}</p>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '2px' }}>
+              <span style={{ fontSize: '18px', fontWeight: '900', color: kpi.color }}>{kpi.value}</span>
+              <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#9ca3af' }}>{kpi.unit}</span>
             </div>
           </div>
         ))}
