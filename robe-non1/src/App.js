@@ -16,7 +16,7 @@ import {
   ChevronDown, ChevronUp, Calendar, Settings, X, BookOpen, BarChart2, TrendingUp, 
   TrendingDown, Minus, Trophy, RefreshCcw, User, MousePointer2, FileText, Download, 
   ArrowUpRight, ArrowDownRight, CheckCircle2, Maximize2, LayoutDashboard, ArrowRight, 
-  Smartphone, XCircle 
+  Smartphone, XCircle, Crown 
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -3816,8 +3816,8 @@ function BranchScheduleEditor({ branch, db, onBack }) {
           const hasSlots = schedule?.slots?.length > 0;
           const isToday = dateStr === new Date().toISOString().split('T')[0];
           return (
-            <button key={day} onClick={() => setSelectedDate(dateStr)} className={`bg-slate-900 ${isToday ? 'ring-inset ring-1 ring-amber-400' : ''} h-28 sm:h-32 flex flex-col p-1.5 sm:p-2 text-left active:bg-slate-800 transition-all group hover:bg-slate-800`}>
-              <span className={`text-[10px] sm:text-xs font-black ${isToday ? 'text-amber-400' : getDateColorClass(year, month, day)}`}>{day}</span>
+            <button key={day} onClick={() => setSelectedDate(dateStr)} className={`bg-slate-900 ${isToday ? 'ring-inset ring-1 ring-emerald-500' : ''} h-28 sm:h-32 flex flex-col p-1.5 sm:p-2 text-left active:bg-slate-800 transition-all group hover:bg-slate-800`}>
+              <span className={`text-[10px] sm:text-xs font-black ${isToday ? 'text-emerald-400' : getDateColorClass(year, month, day)}`}>{day}</span>
               {hasSlots && (
                 <div className="mt-1 flex-1 overflow-hidden space-y-[2px] w-full">
                   {schedule.slots.map((s, i) => (
@@ -4015,6 +4015,23 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
   const [allGlobalSchedules, setAllGlobalSchedules] = useState([]);
   const [touchStart, setTouchStart] = useState({ x: null, y: null });
   const [touchEnd, setTouchEnd] = useState({ x: null, y: null });
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+  const [bookingPrompt, setBookingPrompt] = useState(null);
+
+  const handleAdminClick = () => {
+    if (isAdmin) {
+      setShowAdminDashboard(true);
+    } else {
+      const pwd = window.prompt("관리자 비밀번호를 입력하세요.");
+      if (pwd === "6636") {
+        setIsAdmin(true);
+        setShowAdminDashboard(true);
+      } else if (pwd !== null) {
+        alert("비밀번호가 일치하지 않습니다.");
+      }
+    }
+  };
 
   const navigateDate = (delta) => {
     if (!selectedDate) return;
@@ -4125,19 +4142,32 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
     } catch (e) { console.error(e); }
   };
 
-  const handleBook = async (date, slotIndex) => {
+  const handleBook = async (type) => {
+    if (!bookingPrompt) return;
+    const { date, slotIndex } = bookingPrompt;
     const schedule = branchSchedules[date];
     if (!schedule) return;
     const slot = schedule.slots[slotIndex];
-    if (!window.confirm(`${date} ${slot.time} 예약하시겠습니까?`)) return;
     try {
       const docRef = doc(db, `artifacts/${appId}/public/data/fair_schedules`, `${selectedBranch}_${date}`);
       const newSlots = [...schedule.slots];
       newSlots[slotIndex] = { ...slot, booked: (slot.booked || 0) + 1 };
       const remainingHolds = (schedule.holds || []).filter(h => !(h.slotIndex === slotIndex && h.holderId === fairUser.phone));
-      await updateDoc(docRef, { slots: newSlots, holds: remainingHolds, bookings: arrayUnion({ slotIndex, userId: fairUser.phone, userName: fairUser.name, timestamp: new Date() }) });
-      alert('확정되었습니다.');
-      setSelectedDate(null);
+      await updateDoc(docRef, { slots: newSlots, holds: remainingHolds, bookings: arrayUnion({ slotIndex, userId: fairUser.phone, userName: fairUser.name, timestamp: new Date(), contractType: type }) });
+      setBookingPrompt(null);
+    } catch (e) { console.error(e); }
+  };
+
+  const handleAdminForceCancel = async (date, slotIndex, userId) => {
+    const schedule = branchSchedules[date];
+    if (!schedule || !window.confirm('관리자 권한으로 예약을 강제 취소하시겠습니까?')) return;
+    try {
+      const docRef = doc(db, `artifacts/${appId}/public/data/fair_schedules`, `${selectedBranch}_${date}`);
+      const newSlots = [...schedule.slots];
+      newSlots[slotIndex] = { ...schedule.slots[slotIndex], booked: Math.max(0, (schedule.slots[slotIndex].booked || 0) - 1) };
+      const remainingBookings = (schedule.bookings || []).filter(b => !(b.slotIndex === slotIndex && b.userId === userId));
+      await updateDoc(docRef, { slots: newSlots, bookings: remainingBookings });
+      alert('강제 취소되었습니다.');
     } catch (e) { console.error(e); }
   };
 
@@ -4202,8 +4232,8 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
           const schedule = branchSchedules[dateStr];
           const isToday = dateStr === new Date().toISOString().split('T')[0];
           return (
-            <button key={day} onClick={() => setSelectedDate(dateStr)} className={`bg-slate-900 ${isToday ? 'ring-inset ring-1 ring-amber-400' : ''} h-28 sm:h-32 flex flex-col p-1.5 sm:p-2 text-left active:bg-slate-800 transition-all group hover:bg-slate-800`}>
-              <span className={`text-[10px] sm:text-xs font-black ${isToday ? 'text-amber-400' : getDateColorClass(year, month, day)}`}>{day}</span>
+            <button key={day} onClick={() => setSelectedDate(dateStr)} className={`bg-slate-900 ${isToday ? 'ring-inset ring-1 ring-emerald-500' : ''} h-28 sm:h-32 flex flex-col p-1.5 sm:p-2 text-left active:bg-slate-800 transition-all group hover:bg-slate-800`}>
+              <span className={`text-[10px] sm:text-xs font-black ${isToday ? 'text-emerald-400' : getDateColorClass(year, month, day)}`}>{day}</span>
               <div className="mt-1 flex-1 overflow-hidden space-y-[2px] w-full">
                 {(schedule?.slots || []).map((slot, sIdx) => (
                   <div key={sIdx} className="flex items-center justify-between gap-0.5 leading-none">
@@ -4256,10 +4286,12 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
                     const isFull = (slot.booked || 0) + activeHolds.length >= slot.capacity;
 
                     return (
-                      <div key={sIdx} className={`p-5 rounded-3xl border-2 transition-all flex flex-col gap-4 ${myBooking ? 'border-emerald-600 bg-emerald-50/30' : myHold ? 'border-amber-400 bg-amber-50 shadow-lg' : isFull ? 'border-slate-50 bg-slate-50 opacity-60' : 'border-slate-100 bg-white hover:border-emerald-400'}`}>
+                      <div key={sIdx} className={`p-5 rounded-3xl border-2 transition-all flex flex-col gap-4 ${isFull ? 'border-slate-100 bg-slate-50 opacity-60' : 'border-emerald-400 bg-white hover:border-emerald-500 shadow-sm'}`}>
                         <div className="flex items-center justify-between w-full">
                           <div>
-                            <div className="text-lg font-black text-slate-800">{slot.time}</div>
+                            <div className="text-xl sm:text-2xl font-black text-slate-800 flex items-center gap-2">
+                              {slot.time}
+                            </div>
                             <div className="flex gap-1 mt-1">
                               {Array.from({ length: slot.capacity }).map((_, i) => {
                                 const isB = i < (slot.booked || 0);
@@ -4268,15 +4300,15 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
                               })}
                             </div>
                           </div>
-                          <div className="flex gap-2">
-                            {myBooking && <button onClick={() => handleCancelBookingGlobal(selectedBranch, selectedDate, sIdx)} className="px-4 py-3 bg-red-50 text-red-600 border border-red-100 rounded-2xl font-black text-xs hover:bg-red-100 transition-all">예약 취소</button>}
-                            {myHold && <button onClick={() => handleCancelHold(selectedDate, sIdx)} className="px-4 py-3 bg-white border border-amber-200 text-amber-600 rounded-2xl font-black text-xs hover:bg-amber-100 transition-all">점유 취소</button>}
-                            {!isFull && !myHold && !myBooking && <button onClick={() => handleHold(selectedDate, sIdx)} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm hover:bg-slate-200 transition-all">점유</button>}
-                            {(myHold || (!isFull && !activeHolds.length && !myBooking)) && <button onClick={() => handleBook(selectedDate, sIdx)} className="px-6 py-3 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-lg hover:bg-emerald-700 transition-all">예약 확정</button>}
+                          <div className="flex gap-1 sm:gap-2">
+                            {myBooking && <button onClick={() => handleCancelBookingGlobal(selectedBranch, selectedDate, sIdx)} className="px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-black text-[10px] sm:text-xs hover:bg-emerald-100 transition-all shrink-0 shadow-sm flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />나의예약 취소</button>}
+                            {myHold && <button onClick={() => handleCancelHold(selectedDate, sIdx)} className="px-3 py-2 bg-white border border-amber-200 text-amber-600 rounded-xl font-black text-[10px] sm:text-xs hover:bg-amber-100 transition-all shrink-0">점유 취소</button>}
+                            {!isFull && !myHold && <button onClick={() => handleHold(selectedDate, sIdx)} className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl font-black text-[10px] sm:text-xs hover:bg-slate-200 transition-all shrink-0">점유</button>}
+                            {(myHold || !isFull) && <button onClick={() => setBookingPrompt({ date: selectedDate, slotIndex: sIdx })} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-black text-[10px] sm:text-xs shadow-md hover:bg-emerald-700 transition-all shrink-0">예약 확정</button>}
                           </div>
                         </div>
                         {activeHolds.length > 0 && (
-                          <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100">
+                          <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100 mt-2">
                             {activeHolds.map((hold, hIdx) => {
                               const remain = Math.max(0, Math.floor((hold.expiresAt.toDate() - now) / 1000));
                               const mm = String(Math.floor(remain / 60)).padStart(2, '0');
@@ -4288,6 +4320,16 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
                                 </div>
                               );
                             })}
+                          </div>
+                        )}
+                        {isAdmin && (activeSchedule.bookings || []).filter(b => b.slotIndex === sIdx).length > 0 && (
+                          <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100 mt-2">
+                            {(activeSchedule.bookings || []).filter(b => b.slotIndex === sIdx).map((b, idx) => (
+                              <div key={idx} className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full text-[10px] font-black text-slate-600">
+                                <span>{b.userName}({b.userId}) - {b.contractType || '계약'}</span>
+                                <button onClick={() => handleAdminForceCancel(selectedDate, sIdx, b.userId)} className="text-red-500 hover:text-red-700 ml-1"><X className="w-3 h-3" /></button>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -4312,7 +4354,10 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
           <div className="flex items-center gap-3">
             <div className="p-3 bg-emerald-600 rounded-2xl shadow-lg"><Calendar className="text-white w-6 h-6" /></div>
             <div>
-              <h2 className="text-xl font-black text-slate-800 tracking-tight">Robe 예약 현황</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-black text-slate-800 tracking-tight">Robe 예약 현황</h2>
+                <button onClick={handleAdminClick} className="p-1 hover:bg-slate-100 rounded-full transition-all text-amber-500"><Crown className="w-5 h-5" /></button>
+              </div>
               <div className="flex items-center gap-2">
                 <p className="text-slate-400 font-bold text-[10px]">{fairUser?.name} 담당자님</p>
                 <button onClick={() => { if (window.confirm('로그아웃 하시겠습니까?')) { localStorage.removeItem('fair_user'); onBack(); } }} className="text-[9px] font-black text-rose-500 hover:text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded transition-all">로그아웃</button>
@@ -4363,7 +4408,7 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
                 myBookings.map((b, idx) => (
                   <div key={idx} className="p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm flex items-center justify-between group hover:border-emerald-400 transition-all">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 mb-1"><span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{b.branchName} 지점</span></div>
+                      <div className="flex items-center gap-2 mb-1"><span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{b.branchName} 지점</span><span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{b.contractType || '계약'}</span></div>
                       <div className="text-xl font-black text-slate-800">{b.date.replace(/-/g, '. ')}.</div>
                       <div className="text-sm font-bold text-slate-400 flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{allGlobalSchedules.find(s => s.date === b.date && s.branchName === b.branchName)?.slots[b.slotIndex]?.time || '시간 정보 없음'}</div>
                     </div>
@@ -4373,6 +4418,70 @@ function FairScheduleViewer({ fairUser, branches, db, onBack }) {
               }
             </div>
             <div className="p-8 bg-slate-50 border-t border-slate-100 shrink-0"><button onClick={() => setIsMyBookingsOpen(false)} className="w-full py-5 bg-slate-800 text-white rounded-2xl font-black shadow-xl hover:bg-black transition-all">닫기</button></div>
+          </div>
+        </div>
+      )}
+
+      {bookingPrompt && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-2xl w-full max-w-sm flex flex-col gap-6 animate-in zoom-in-95 duration-200">
+            <div>
+              <h3 className="text-xl font-black text-slate-800 text-center">예약 유형 선택</h3>
+              <p className="text-center text-slate-500 mt-2 text-sm">진행하실 계약 유형을 선택해 주세요.</p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button onClick={() => handleBook('정계약')} className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-md hover:bg-emerald-700 transition-all text-lg">정계약 확정</button>
+              <button onClick={() => handleBook('가계약')} className="w-full py-4 bg-amber-500 text-white rounded-2xl font-black shadow-md hover:bg-amber-600 transition-all text-lg">가계약 확정</button>
+              <button onClick={() => setBookingPrompt(null)} className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-black hover:bg-slate-200 transition-all mt-2">취소</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAdminDashboard && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[70] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-6 sm:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-[2.5rem]">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-amber-500 rounded-2xl shadow-lg"><Crown className="text-white w-6 h-6" /></div>
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-800">관리자 대시보드</h3>
+                  <p className="text-slate-500 text-xs sm:text-sm font-bold">박람회 담당자별 계약 현황</p>
+                </div>
+              </div>
+              <button onClick={() => setShowAdminDashboard(false)} className="p-3 bg-white rounded-2xl border border-slate-200 shadow-sm"><X className="w-6 h-6 text-slate-400" /></button>
+            </div>
+            <div className="p-6 sm:p-8 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {Object.values(
+                  allGlobalSchedules.reduce((acc, schedule) => {
+                    (schedule.bookings || []).forEach(b => {
+                      const key = `${b.userName}_${b.userId}`;
+                      if (!acc[key]) acc[key] = { name: b.userName, phone: b.userId, total: 0, formal: 0, provisional: 0 };
+                      acc[key].total++;
+                      if (b.contractType === '가계약') acc[key].provisional++;
+                      else acc[key].formal++;
+                    });
+                    return acc;
+                  }, {})
+                ).sort((a, b) => b.total - a.total).map((stat, idx) => (
+                  <div key={idx} className="p-5 bg-white border-2 border-slate-100 rounded-3xl shadow-sm hover:border-amber-400 transition-all">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-amber-50 rounded-full flex items-center justify-center"><User className="text-amber-600 w-5 h-5" /></div>
+                      <div>
+                        <div className="font-black text-slate-800 text-lg">{stat.name}</div>
+                        <div className="text-[10px] text-slate-400 font-bold">{stat.phone}</div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-slate-50 rounded-xl p-2"><div className="text-[10px] text-slate-500 font-bold mb-1">총 계약</div><div className="font-black text-slate-800 text-lg">{stat.total}</div></div>
+                      <div className="bg-emerald-50 rounded-xl p-2"><div className="text-[10px] text-emerald-600 font-bold mb-1">정계약</div><div className="font-black text-emerald-700 text-lg">{stat.formal}</div></div>
+                      <div className="bg-amber-50 rounded-xl p-2"><div className="text-[10px] text-amber-600 font-bold mb-1">가계약</div><div className="font-black text-amber-700 text-lg">{stat.provisional}</div></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
